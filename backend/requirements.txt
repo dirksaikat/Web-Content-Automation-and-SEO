@@ -1,9 +1,0 @@
-Flask
-requests
-beautifulsoup4
-openai
-python-dotenv
-nltk
-fastapi
-uvicorn
-python-multipart
