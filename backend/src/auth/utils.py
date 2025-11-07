@@ -11,14 +11,16 @@ password_context = CryptContext(
     schemes=[
         'bcrypt'
     ],
-     deprecated="auto"
+    deprecated="auto"
 )
+
 
 def generate_password_hash(password: str) -> str:
     #password = password[:72]
     #hash = password_context.hash(password)
     return password
-    
+
+
 def verify_password(password: str, password_hash: str) -> bool:
     password = password[:72]
     #return password_context.verify(password, password_hash)
@@ -29,16 +31,16 @@ def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool
     payload = {}
     payload['user'] = user_data
     payload['exp'] = datetime.now() + (expiry if expiry is not None else timedelta(seconds=ACCESS_TOKEN_EXPIRY))
-    #payload['jti'] = uuid.uuid4
     payload['jti'] = str(uuid.uuid4())
     payload['refresh'] = refresh
-    
+
     token = jwt.encode(
         payload=payload,
         key=Config.JWT_SECRET,
         algorithm=Config.JWT_ALGO
     )
     return token
+
 
 def decode_token(token: str) -> dict:
     try:
@@ -51,4 +53,3 @@ def decode_token(token: str) -> dict:
     except jwt.PyJWTError as ex:
         logging.exception(ex)
         return None
-            
