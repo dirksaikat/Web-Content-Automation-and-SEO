@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.exceptions import HTTPException
-from .schemas import CreateUserRequestSchema, UserModel, LoginRequestSchema
+from .schemas import CreateUserRequestSchema, UserSchema, LoginRequestSchema
 from .service import UserService
 from src.db.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -13,7 +13,7 @@ user_service = UserService()
 REFRESH_TOKEN_EXPIRY = 2
 
 
-@auth_router.post("/signup", response_model=UserModel, status_code=status.HTTP_201_CREATED)
+@auth_router.post("/signup", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user_account(user_data: CreateUserRequestSchema, session: AsyncSession = Depends(get_session)):
     email = user_data.email
     user_exists = await user_service.user_exists(email=email, session=session)

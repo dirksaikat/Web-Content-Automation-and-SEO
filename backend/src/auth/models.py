@@ -15,7 +15,6 @@ class User(SQLModel, table=True):
             default=uuid.uuid4
         )
     )
-    username: str
     email: str
     first_name: str
     last_name: str
