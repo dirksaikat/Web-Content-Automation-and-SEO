@@ -15,7 +15,7 @@ class UserModel(BaseModel):
     updated_at: datetime
 
 
-class UserCreateModel(BaseModel):
+class CreateUserRequestSchema(BaseModel):
     first_name: str = Field(max_length=25)
     last_name: str = Field(max_length=25)
     email: str = Field(max_length=40)
@@ -23,6 +23,6 @@ class UserCreateModel(BaseModel):
     password: str = Field(min_length=6)
 
 
-class UserLoginModel(BaseModel):
+class LoginRequestSchema(BaseModel):
     email: str = Field(max_length=40)
     password: str = Field(min_length=6)

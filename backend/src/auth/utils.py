@@ -22,7 +22,7 @@ def generate_password_hash(password: str) -> str:
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    password = password[:72]
+    #password = password[:72]
     #return password_context.verify(password, password_hash)
     return password == password_hash
 
