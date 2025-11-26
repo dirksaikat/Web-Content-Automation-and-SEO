@@ -24,3 +24,17 @@ class CreateUserRequestSchema(BaseModel):
 class LoginRequestSchema(BaseModel):
     email: str = Field(max_length=40)
     password: str = Field(min_length=6)
+
+
+class CreateOtpSchema(BaseModel):
+    user_uid: uuid.UUID
+    code: str
+    token_digest: str
+    purpose: str
+    salt: str
+    expires_at: datetime
+
+
+class CreateUserResponseSchema(BaseModel):
+    message: str
+
