@@ -10,6 +10,7 @@ from datetime import timedelta, datetime
 from fastapi.responses import JSONResponse
 from src.errors.errors import UserAlreadyExists, InvalidCredentials, InvalidToken
 from .otp_utils import create_otp_schema
+from src.mail.mail import send_mail_message
 
 auth_router = APIRouter()
 user_service = UserService()
@@ -25,6 +26,14 @@ async def create_user_account(user_data: CreateUserRequestSchema, session: Async
     new_user = await user_service.create_user(user_data=user_data, session=session)
     otp_schema = create_otp_schema(user_uid=new_user.uid, purpose="otp_verification")
     await user_service.save_generated_otp(otp_schema=otp_schema, session=session)
+
+    html = f"<h1>Your otp is {otp_schema.code} </h1>"
+
+    await send_mail_message(
+        recipients=[new_user.email],
+        subject="OTP Verification",
+        body=html
+    )
 
     return {
         "message": "An otp was sent to the registered email.",
@@ -84,6 +93,7 @@ async def create_new_access_token(
             }
         )
     raise InvalidToken()
+
 
 @auth_router.post("/logout")
 async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
