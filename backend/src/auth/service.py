@@ -1,7 +1,7 @@
-from .models import User, OtpVerification
+from .models import User
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, desc
-from .schemas import CreateUserRequestSchema, CreateOtpSchema
+from .schemas import CreateUserRequestSchema
 from .utils import generate_password_hash
 
 
@@ -26,12 +26,3 @@ class UserService:
         session.add(new_user)
         await session.commit()
         return new_user
-
-    async def save_generated_otp(self, otp_schema: CreateOtpSchema, session: AsyncSession):
-        otp_schema_dict = otp_schema.model_dump()
-        otp_verification = OtpVerification(
-            **otp_schema_dict
-        )
-        session.add(otp_verification)
-        await session.commit()
-        return otp_verification

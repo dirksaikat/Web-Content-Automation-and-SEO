@@ -101,7 +101,7 @@ def register_all_errors(app: FastAPI):
             initial_detail={
                 "message": "Account Not verified",
                 "error_code": "account_not_verified",
-                "resolution": "Please check your email for verification details"
+                "resolution": "Email not verified. Please verify before logging in."
             },
         ),
     )
@@ -115,4 +115,3 @@ def register_all_errors(app: FastAPI):
             },
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
-

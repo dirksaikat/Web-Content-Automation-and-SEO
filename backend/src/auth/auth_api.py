@@ -1,19 +1,20 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.exceptions import HTTPException
 from .schemas import CreateUserRequestSchema, UserSchema, LoginRequestSchema, CreateUserResponseSchema
 from .service import UserService
+from src.otp.service import OtpService
 from src.db.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .utils import create_access_token, decode_token, verify_password
 from .dependencies import RefreshTokenBearer, AccessTokenBearer
 from datetime import timedelta, datetime
 from fastapi.responses import JSONResponse
-from src.errors.errors import UserAlreadyExists, InvalidCredentials, InvalidToken
+from src.errors.errors import UserAlreadyExists, InvalidCredentials, InvalidToken, AccountNotVerified
 from .otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 
 auth_router = APIRouter()
 user_service = UserService()
+otp_service = OtpService()
 REFRESH_TOKEN_EXPIRY = 2
 
 
@@ -25,7 +26,7 @@ async def create_user_account(user_data: CreateUserRequestSchema, session: Async
         raise UserAlreadyExists()
     new_user = await user_service.create_user(user_data=user_data, session=session)
     otp_schema = create_otp_schema(user_uid=new_user.uid, purpose="otp_verification")
-    await user_service.save_generated_otp(otp_schema=otp_schema, session=session)
+    await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
 
     html = f"<h1>Your otp is {otp_schema.code} </h1>"
 
@@ -50,6 +51,10 @@ async def login_user(login_data: LoginRequestSchema, session: AsyncSession = Dep
     if user is not None:
         is_valid_password = verify_password(password=password, password_hash=user.password_hash)
         if is_valid_password:
+
+            if not user.is_verified:
+                raise AccountNotVerified()
+
             access_token = create_access_token(
                 user_data={
                     "email": user.email,

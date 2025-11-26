@@ -2,7 +2,7 @@ import hashlib
 import os
 import random
 from datetime import datetime, timedelta
-from .schemas import CreateOtpSchema
+from src.otp.schemas import CreateOtpSchema
 import uuid
 
 
