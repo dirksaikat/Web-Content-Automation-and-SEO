@@ -20,3 +20,6 @@ class OtpVerification(SQLModel, table=True):
     salt: str = Field(max_length=64, nullable=True)
     expires_at: datetime = Field(nullable=False)
     created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+
+    def is_expired(self) -> bool:
+        return self.expires_at < datetime.utcnow()

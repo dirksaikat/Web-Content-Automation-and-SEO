@@ -49,7 +49,12 @@ class UserNotFound(AppException):
 
 
 class AccountNotVerified(AppException):
-    """Book not found"""
+    """"""
+    pass
+
+
+class InvalidOtp(AppException):
+    """in case of invalid otp"""
     pass
 
 

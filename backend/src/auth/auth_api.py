@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, status
-from .schemas import CreateUserRequestSchema, UserSchema, LoginRequestSchema, CreateUserResponseSchema
+from .schemas import CreateUserRequestSchema, LoginRequestSchema, CreateUserResponseSchema
 from .service import UserService
 from src.otp.service import OtpService
 from src.db.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .utils import create_access_token, decode_token, verify_password
+from .utils import create_access_token, verify_password
 from .dependencies import RefreshTokenBearer, AccessTokenBearer
 from datetime import timedelta, datetime
 from fastapi.responses import JSONResponse
 from src.errors.errors import UserAlreadyExists, InvalidCredentials, InvalidToken, AccountNotVerified
-from .otp_utils import create_otp_schema
+from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 
 auth_router = APIRouter()
@@ -25,7 +25,7 @@ async def create_user_account(user_data: CreateUserRequestSchema, session: Async
     if user_exists:
         raise UserAlreadyExists()
     new_user = await user_service.create_user(user_data=user_data, session=session)
-    otp_schema = create_otp_schema(user_uid=new_user.uid, purpose="otp_verification")
+    otp_schema = create_otp_schema(user_uid=new_user.uid, purpose="account_verification")
     await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
 
     html = f"<h1>Your otp is {otp_schema.code} </h1>"

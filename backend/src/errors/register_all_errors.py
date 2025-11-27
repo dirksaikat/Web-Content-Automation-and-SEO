@@ -3,7 +3,8 @@ from fastapi.responses import JSONResponse
 from .errors import (
     create_exception_handler,
     UserAlreadyExists, UserNotFound, InvalidCredentials, InvalidToken, RevokedToken,
-    AccessTokenRequired, RefreshTokenRequired, InsufficientPermission, AccountNotVerified
+    AccessTokenRequired, RefreshTokenRequired, InsufficientPermission, AccountNotVerified,
+    InvalidOtp
 )
 
 
@@ -39,6 +40,17 @@ def register_all_errors(app: FastAPI):
             },
         ),
     )
+    app.add_exception_handler(
+        InvalidOtp,
+        create_exception_handler(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            initial_detail={
+                "message": "OTP is invalid or expired",
+                "error_code": "invalid_otp",
+            },
+        ),
+    )
+
     app.add_exception_handler(
         InvalidToken,
         create_exception_handler(
