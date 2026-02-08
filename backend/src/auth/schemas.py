@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 import uuid
 from datetime import datetime
 
@@ -12,6 +12,7 @@ class UserSchema(BaseModel):
     is_verified: bool
     created_at: datetime
     updated_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CreateUserRequestSchema(BaseModel):
@@ -19,6 +20,7 @@ class CreateUserRequestSchema(BaseModel):
     last_name: str = Field(max_length=25)
     email: str = Field(max_length=40)
     password: str = Field(min_length=6)
+    confirm_password: str = Field(min_length=6)
 
 
 class LoginRequestSchema(BaseModel):
@@ -27,4 +29,11 @@ class LoginRequestSchema(BaseModel):
 
 
 class CreateUserResponseSchema(BaseModel):
-    message: str
+    message: str = Field(
+        default="Registration successful! Please check your email to verify your account.",
+        description="Success message",
+    )
+    user: UserSchema = Field(..., description="Registered user info")
+    email_sent: bool = Field(default=True, description="Whether verification email was sent")
+
+

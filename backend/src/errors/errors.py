@@ -33,6 +33,11 @@ class UserAlreadyExists(AppException):
     pass
 
 
+class InvalidEmail(AppException):
+    """User has provided an email for a user who exists while sign up"""
+    pass
+
+
 class InvalidCredentials(AppException):
     """Invalid credentials were provided"""
     pass

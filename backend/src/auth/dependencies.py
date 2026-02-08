@@ -4,8 +4,6 @@ from .utils import decode_token
 from src.db.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .service import UserService
-from typing import List, Any
-from .models import User
 from src.errors.errors import InvalidToken, RevokedToken, AccessTokenRequired, RefreshTokenRequired
 
 user_service = UserService()

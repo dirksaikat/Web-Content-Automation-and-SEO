@@ -32,7 +32,7 @@ async def verify_account(data: AccountVerificationSchema, session: AsyncSession 
         await otp_service.delete_otp(user_uid=user.uid, purpose="account_verification", session=session)
         raise InvalidOtp()
 
-    #await self.otp_service.delete_otp(user_uid, purpose, session)
+    await otp_service.delete_otp(user_uid=user.uid, purpose="account_verification", session=session)
 
     # 5. Update user as verified
     # await self.user_service.mark_user_as_verified(

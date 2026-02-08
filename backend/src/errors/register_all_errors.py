@@ -4,7 +4,7 @@ from .errors import (
     create_exception_handler,
     UserAlreadyExists, UserNotFound, InvalidCredentials, InvalidToken, RevokedToken,
     AccessTokenRequired, RefreshTokenRequired, InsufficientPermission, AccountNotVerified,
-    InvalidOtp
+    InvalidOtp, InvalidEmail
 )
 
 
@@ -114,6 +114,18 @@ def register_all_errors(app: FastAPI):
                 "message": "Account Not verified",
                 "error_code": "account_not_verified",
                 "resolution": "Email not verified. Please verify before logging in."
+            },
+        ),
+    )
+
+    app.add_exception_handler(
+        InvalidEmail,
+        create_exception_handler(
+            status_code=status.HTTP_403_FORBIDDEN,
+            initial_detail={
+                "message": "Invalid Email",
+                "error_code": "invalid_email",
+                "resolution": None
             },
         ),
     )

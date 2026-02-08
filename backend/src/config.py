@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,10 @@ class Settings(BaseSettings):
     MAIL_SSL_TLS: bool = False
     USE_CREDENTIALS: bool = True
     VALIDATE_CERTS: bool = True
+
+    REDIS_URL: str = Field(
+        default="redis://127.0.0.1:6379/0", description="Redis connection URL for caching and sessions"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
