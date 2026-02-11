@@ -2,13 +2,15 @@ from .models import User
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select, desc
 from .schemas import CreateUserRequestSchema
-from .utils import generate_password_hash
+from src.util.email_util import normalize_email
+from src.util.password_util import hash_password
 
 
 class UserService:
 
     async def get_user_by_email(self, email: str, session: AsyncSession):
-        statement = select(User).where(User.email == email)
+        normalized_email = normalize_email(email)
+        statement = select(User).where(User.normalized_email == normalized_email)
         result = await session.exec(statement=statement)
         user = result.first()
         return user
@@ -22,7 +24,8 @@ class UserService:
         new_user = User(
             **user_data_dict
         )
-        new_user.password_hash = generate_password_hash(user_data_dict["password"])
+        new_user.password_hash = hash_password(user_data_dict["password"])
+        new_user.normalized_email = normalize_email(user_data.email)
         session.add(new_user)
         await session.commit()
         return new_user

@@ -39,8 +39,8 @@ USER_EMAIL_EXISTS = ErrorDef(
     message="This email is already registered.",
 )
 
-AUTH_WEAK_PASSWORD = ErrorDef(
-    code="AUTH_WEAK_PASSWORD",
+AUTH_INVALID_PASSWORD = ErrorDef(
+    code="AUTH_INVALID_PASSWORD",
     status=status.HTTP_400_BAD_REQUEST,
     message="Password is not valid.",
 )
@@ -74,9 +74,9 @@ class AuthError:
         )
 
     @staticmethod
-    def weak_password(**details) -> AppException:
+    def invalid_password(**details) -> AppException:
         return AppException(
-            AUTH_WEAK_PASSWORD,
+            AUTH_INVALID_PASSWORD,
             details=details or None,
         )
 

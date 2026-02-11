@@ -39,7 +39,7 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def validate_password_strength(password: str) -> dict[str, Any]:
+def validate_password_strength(password: str, confirm_password: str) -> dict[str, Any]:
     """
     Validate password strength.
 
@@ -55,6 +55,7 @@ def validate_password_strength(password: str) -> dict[str, Any]:
 
     Args:
         password: The password to validate
+        confirm_password: The password to confirm
 
     Returns:
         Dict containing:
@@ -74,6 +75,9 @@ def validate_password_strength(password: str) -> dict[str, Any]:
         (r"[0-9]", "Password must contain at least one number", 20),
         (r"[^a-zA-Z0-9]", "Password must contain at least one special character (!@#$%^&*)", 15),
     ]
+
+    if password != confirm_password:
+        errors.append("Password missmatch.")
 
     # Length validation with bonuses
     if length < 8:

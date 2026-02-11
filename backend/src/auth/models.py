@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, Field, Column
 import sqlalchemy.dialects.postgresql as pg
+from sqlalchemy import String
 import uuid
 from datetime import datetime
 
@@ -15,7 +16,8 @@ class User(SQLModel, table=True):
             default=uuid.uuid4
         )
     )
-    email: str
+    email: str = Field(sa_column=Column(String(255), nullable=False))
+    normalized_email: str = Field(sa_column=Column(String(255), nullable=False))
     first_name: str
     last_name: str
     password_hash: str = Field(exclude=True)

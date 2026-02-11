@@ -15,15 +15,7 @@ password_context = CryptContext(
 )
 
 
-def generate_password_hash(password: str) -> str:
-    #password = password[:72]
-    #hash = password_context.hash(password)
-    return password
-
-
 def verify_password(password: str, password_hash: str) -> bool:
-    #password = password[:72]
-    #return password_context.verify(password, password_hash)
     return password == password_hash
 
 

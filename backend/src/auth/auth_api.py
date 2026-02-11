@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, status
-from .schemas import CreateUserRequestSchema, LoginRequestSchema, CreateUserResponseSchema
 from .service import UserService
 from src.otp.service import OtpService
 from src.db.main import get_session
@@ -17,7 +16,7 @@ from src.util.password_util import validate_password_strength, hash_password
 from redis.asyncio import Redis
 from src.infra.redis_client import get_redis
 from src.errors.auth_error import AuthError
-from .schemas import UserSchema, CreateUserResponseSchema
+from .schemas import UserSchema, CreateUserResponseSchema, CreateUserRequestSchema, LoginRequestSchema
 
 auth_router = APIRouter()
 user_service = UserService()
@@ -32,30 +31,24 @@ register_rate_limiter = get_rate_limiter(
 )
 
 
-@auth_router.post("/signup", response_model=CreateUserResponseSchema, status_code=status.HTTP_201_CREATED)
+@auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_account(
         user_data: CreateUserRequestSchema,
         session: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
         _: None = Depends(register_rate_limiter),
-):
-    #email = user_data.email
+) -> CreateUserResponseSchema:
 
     email_validation = await validate_email(user_data.email)
     if not email_validation["valid"]:
         raise AuthError.invalid_email(errors=email_validation["errors"])
 
-    normalised_email = email_validation["normalized"]
-
-    pwd_validation = validate_password_strength(user_data.password)
+    pwd_validation = validate_password_strength(user_data.password, user_data.confirm_password)
 
     if not pwd_validation["valid"]:
-        raise AuthError.weak_password(errors=pwd_validation["errors"])
+        raise AuthError.invalid_password(errors=pwd_validation["errors"])
 
-    user_data.password = hash_password(user_data.password)
-    user_data.email = normalised_email
-
-    lock_key = f"register_lock:{normalised_email}"
+    lock_key = f"register_lock:{user_data.email}"
     lock = redis.lock(lock_key, timeout=10)
 
     try:
@@ -64,13 +57,13 @@ async def create_user_account(
         if not acquired:
             raise AuthError.rate_limited(message="Registration in progress. Please try again.")
 
-        user_exists = await user_service.user_exists(email=normalised_email, session=session)
+        user_exists = await user_service.user_exists(email=user_data.email, session=session)
 
         if user_exists:
             raise AuthError.email_already_registered()
 
         new_user = await user_service.create_user(user_data=user_data, session=session)
-        otp_schema = create_otp_schema(email=normalised_email, user_uid=new_user.uid, purpose="account_verification")
+        otp_schema = create_otp_schema(email=user_data.email, user_uid=new_user.uid, purpose="account_verification")
         await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
         html = f"<h1>Your otp is {otp_schema.code} </h1>"
         await send_mail_message(
@@ -87,6 +80,7 @@ async def create_user_account(
 
     except Exception as e:
         await session.rollback()
+        raise
     finally:
         await lock.release()
 
@@ -133,6 +127,7 @@ async def login_user(login_data: LoginRequestSchema, session: AsyncSession = Dep
                 }
             )
     raise InvalidCredentials()
+
 
 @auth_router.get("/refresh_token")
 async def create_new_access_token(
