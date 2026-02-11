@@ -27,20 +27,10 @@ class RefreshTokenRequired(AppException):
     """User has provided an access token when a refresh token is needed"""
     pass
 
-class InvalidCredentials(AppException):
-    """Invalid credentials were provided"""
-    pass
-
 
 class InsufficientPermission(AppException):
     """User does not have necessary permissions to that action"""
     pass
-
-
-class AccountNotVerified(AppException):
-    """"""
-    pass
-
 
 
 def create_exception_handler(status_code: int, initial_detail: Any) -> (

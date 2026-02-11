@@ -7,7 +7,7 @@ from .utils import create_access_token, verify_password
 from .dependencies import RefreshTokenBearer, AccessTokenBearer
 from datetime import timedelta, datetime
 from fastapi.responses import JSONResponse
-from src.errors.errors import InvalidCredentials, InvalidToken, AccountNotVerified
+from src.errors.errors import InvalidToken
 from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
@@ -92,41 +92,52 @@ async def login_user(login_data: LoginRequestSchema, session: AsyncSession = Dep
 
     user = await user_service.get_user_by_email(email=email, session=session)
 
-    if user is not None:
-        is_valid_password = verify_password(password=password, password_hash=user.password_hash)
-        if is_valid_password:
+    if not user:
+        AuthError.invalid_credentials()
 
-            if not user.is_verified:
-                raise AccountNotVerified()
+    # todo perform a lockout check here later on ...
 
-            access_token = create_access_token(
-                user_data={
-                    "email": user.email,
-                    "user_uid": str(user.uid)
-                }
-            )
+    is_valid_password = verify_password(password=hash_password(password), password_hash=user.password_hash)
 
-            refresh_token = create_access_token(
-                user_data={
-                    "email": user.email,
-                    "user_uid": str(user.uid)
-                },
-                refresh=True,
-                expiry=timedelta(days=REFRESH_TOKEN_EXPIRY)
-            )
+    if not is_valid_password:
+        # todo update lockout logic here, increase count...
+        AuthError.invalid_credentials()
 
-            return JSONResponse(
-                content={
-                    "message": "Login successful",
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                    "user": {
-                        "email": user.email,
-                        "uid": str(user.uid)
-                    }
-                }
-            )
-    raise InvalidCredentials()
+    if not user.is_verified:
+        AuthError.account_not_verified()
+
+    if not user.is_active:
+        AuthError.account_inactive()
+
+    # todo, if all success, reset the lockout logic here
+
+    access_token = create_access_token(
+        user_data={
+            "email": user.email,
+            "user_uid": str(user.uid)
+        }
+    )
+
+    refresh_token = create_access_token(
+        user_data={
+            "email": user.email,
+            "user_uid": str(user.uid)
+        },
+        refresh=True,
+        expiry=timedelta(days=REFRESH_TOKEN_EXPIRY)
+    )
+
+    return JSONResponse(
+        content={
+            "message": "Login successful",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": {
+                "email": user.email,
+                "uid": str(user.uid)
+            }
+        }
+    )
 
 
 @auth_router.get("/refresh_token")

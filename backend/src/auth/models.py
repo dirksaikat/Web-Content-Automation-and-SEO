@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Column
 import sqlalchemy.dialects.postgresql as pg
-from sqlalchemy import String
+from sqlalchemy import String, Boolean
 import uuid
 from datetime import datetime
 
@@ -22,6 +22,7 @@ class User(SQLModel, table=True):
     last_name: str
     password_hash: str = Field(exclude=True)
     is_verified: bool = False
+    is_active: bool = Field(sa_column=Column(Boolean, nullable=False, server_default="true"))
     created_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
     updated_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
 
