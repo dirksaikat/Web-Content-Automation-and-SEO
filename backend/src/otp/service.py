@@ -4,7 +4,6 @@ from sqlmodel import select
 from .models import OtpVerification
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .schemas import CreateOtpSchema
-import uuid
 
 
 class OtpService:
@@ -27,18 +26,27 @@ class OtpService:
         await session.commit()
         return otp_verification
 
-    async def get_otp_by_user_and_purpose(
+    async def get_otp_by_email_and_purpose(
             self,
-            user_uid: uuid.UUID,
+            email: str,
+            code: str,
             purpose: str, session: AsyncSession) -> OtpVerification | None:
-
         statement = (select(OtpVerification).where(
-            OtpVerification.user_uid == user_uid,
+            OtpVerification.email == email,
+            OtpVerification.token_digest == code,
             OtpVerification.purpose == purpose)
         )
         result = await session.exec(statement=statement)
         otp_entry = result.first()
         return otp_entry
 
-    async def delete_otp(self, user_uid: uuid.UUID, purpose: str, session: AsyncSession):
-        pass
+    async def delete_otp(self, email: str, code: str, purpose: str, session: AsyncSession) -> bool:
+        await session.exec(
+            delete(OtpVerification).where(
+                OtpVerification.email == email,
+                OtpVerification.purpose == purpose,
+                OtpVerification.token_digest == code
+            )
+        )
+        await session.commit()
+        return True

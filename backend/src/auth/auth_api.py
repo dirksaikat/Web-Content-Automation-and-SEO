@@ -39,7 +39,7 @@ async def create_user_account(
         redis: Redis = Depends(get_redis),
         _: None = Depends(register_rate_limiter),
 ):
-    email = user_data.email
+    #email = user_data.email
 
     email_validation = await validate_email(user_data.email)
     if not email_validation["valid"]:
@@ -53,6 +53,7 @@ async def create_user_account(
         raise AuthError.weak_password(errors=pwd_validation["errors"])
 
     user_data.password = hash_password(user_data.password)
+    user_data.email = normalised_email
 
     lock_key = f"register_lock:{normalised_email}"
     lock = redis.lock(lock_key, timeout=10)
@@ -63,13 +64,13 @@ async def create_user_account(
         if not acquired:
             raise AuthError.rate_limited(message="Registration in progress. Please try again.")
 
-        user_exists = await user_service.user_exists(email=email, session=session)
+        user_exists = await user_service.user_exists(email=normalised_email, session=session)
 
         if user_exists:
             raise AuthError.email_already_registered()
 
         new_user = await user_service.create_user(user_data=user_data, session=session)
-        otp_schema = create_otp_schema(user_uid=new_user.uid, purpose="account_verification")
+        otp_schema = create_otp_schema(email=normalised_email, user_uid=new_user.uid, purpose="account_verification")
         await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
         html = f"<h1>Your otp is {otp_schema.code} </h1>"
         await send_mail_message(

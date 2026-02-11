@@ -27,17 +27,6 @@ class RefreshTokenRequired(AppException):
     """User has provided an access token when a refresh token is needed"""
     pass
 
-
-class UserAlreadyExists(AppException):
-    """User has provided an email for a user who exists while sign up"""
-    pass
-
-
-class InvalidEmail(AppException):
-    """User has provided an email for a user who exists while sign up"""
-    pass
-
-
 class InvalidCredentials(AppException):
     """Invalid credentials were provided"""
     pass
@@ -48,19 +37,10 @@ class InsufficientPermission(AppException):
     pass
 
 
-class UserNotFound(AppException):
-    """User not found"""
-    pass
-
-
 class AccountNotVerified(AppException):
     """"""
     pass
 
-
-class InvalidOtp(AppException):
-    """in case of invalid otp"""
-    pass
 
 
 def create_exception_handler(status_code: int, initial_detail: Any) -> (

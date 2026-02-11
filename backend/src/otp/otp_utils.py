@@ -1,24 +1,26 @@
 import hashlib
-import os
 import random
 from datetime import datetime, timedelta
 from src.otp.schemas import CreateOtpSchema
 import uuid
 
 
-def create_otp_schema(user_uid: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpSchema:
+def hash_otp(code: str) -> str:
+    return hashlib.sha256(code.encode()).hexdigest()
+
+
+def create_otp_schema(email: str, user_uid: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpSchema:
     code = f"{random.randint(100000, 999999)}"
-    salt = os.urandom(16).hex()
-    digest = hashlib.sha256((salt + code).encode()).hexdigest()
+    digest = hash_otp(code)
     return CreateOtpSchema(
+        email=email,
         user_uid=user_uid,
         code=code,
-        salt=salt,
         purpose=purpose,
         token_digest=digest,
         expires_at=datetime.utcnow() + timedelta(minutes=ttl_minutes)
     )
 
 
-def verify_code_matches(input_code, salt, stored_digest):
-    return hashlib.sha256((salt + input_code).encode()).hexdigest() == stored_digest
+def verify_code_matches(code: str, stored_digest: str):
+    return hash_otp(code=code) == stored_digest

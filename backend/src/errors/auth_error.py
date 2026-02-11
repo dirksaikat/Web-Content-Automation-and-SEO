@@ -45,6 +45,18 @@ AUTH_WEAK_PASSWORD = ErrorDef(
     message="Password is not valid.",
 )
 
+AUTH_USER_NOT_FOUND = ErrorDef(
+    code="AUTH_USER_NOT_FOUND",
+    status=status.HTTP_400_BAD_REQUEST,
+    message="User not found.",
+)
+
+AUTH_INVALID_OTP = ErrorDef(
+    code="AUTH_INVALID_OTP",
+    status=status.HTTP_400_BAD_REQUEST,
+    message="Invalid otp.",
+)
+
 
 class AuthError:
     @staticmethod
@@ -79,4 +91,12 @@ class AuthError:
     @staticmethod
     def rate_limited(message: str = None) -> AppException:
         return AppException(error=AUTH_RATE_LIMITED, message=message)
+
+    @staticmethod
+    def user_not_found() -> AppException:
+        return AppException(error=AUTH_USER_NOT_FOUND)
+
+    @staticmethod
+    def invalid_otp() -> AppException:
+        return AppException(error=AUTH_INVALID_OTP)
 

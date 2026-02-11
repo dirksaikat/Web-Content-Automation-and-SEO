@@ -26,3 +26,14 @@ class UserService:
         session.add(new_user)
         await session.commit()
         return new_user
+
+    async def update_user(self, user: User, session: AsyncSession, **kwargs) -> User | None:
+        if not user:
+            return None
+
+        for key, value in kwargs.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+
+        await session.commit()
+        return user
