@@ -12,14 +12,15 @@ from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.util.email_util import validate_email
-from src.util.password_util import validate_password_strength, hash_password
+from src.util.password_util import validate_password_strength
+from src.util.date_util import utc_now
 from redis.asyncio import Redis
+from src.di.services_di import get_user_service
 from src.infra.redis_client import get_redis
 from src.errors.auth_error import AuthError
 from .schemas import UserSchema, CreateUserResponseSchema, CreateUserRequestSchema, LoginRequestSchema
 
 auth_router = APIRouter()
-user_service = UserService()
 otp_service = OtpService()
 REFRESH_TOKEN_EXPIRY = 2
 
@@ -34,11 +35,11 @@ register_rate_limiter = get_rate_limiter(
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_account(
         user_data: CreateUserRequestSchema,
+        user_service: UserService = Depends(get_user_service),
         session: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
         _: None = Depends(register_rate_limiter),
 ) -> CreateUserResponseSchema:
-
     email_validation = await validate_email(user_data.email)
     if not email_validation["valid"]:
         raise AuthError.invalid_email(errors=email_validation["errors"])
@@ -57,12 +58,12 @@ async def create_user_account(
         if not acquired:
             raise AuthError.rate_limited(message="Registration in progress. Please try again.")
 
-        user_exists = await user_service.user_exists(email=user_data.email, session=session)
+        user_exists = await user_service.user_exists(email=user_data.email)
 
         if user_exists:
             raise AuthError.email_already_registered()
 
-        new_user = await user_service.create_user(user_data=user_data, session=session)
+        new_user = await user_service.create_user(user_data=user_data)
         otp_schema = create_otp_schema(email=user_data.email, user_uid=new_user.uid, purpose="account_verification")
         await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
         html = f"<h1>Your otp is {otp_schema.code} </h1>"
@@ -86,30 +87,38 @@ async def create_user_account(
 
 
 @auth_router.post("/login")
-async def login_user(login_data: LoginRequestSchema, session: AsyncSession = Depends(get_session)):
+async def login_user(
+        login_data: LoginRequestSchema,
+        user_service: UserService = Depends(get_user_service),
+):
     email = login_data.email
     password = login_data.password
 
-    user = await user_service.get_user_by_email(email=email, session=session)
+    user = await user_service.get_user_by_email(email=email)
 
     if not user:
-        AuthError.invalid_credentials()
+        raise AuthError.invalid_credentials()
 
-    # todo perform a lockout check here later on ...
+    if user.account_locked_until:
+        if user.account_locked_until > utc_now():
+            minutes_left = int((user.account_locked_until - utc_now()).total_seconds() / 60)
+            raise AuthError.account_locked(minutes_remaining=minutes_left)
+        else:
+            await user_service.reset_account_lock(user)
 
-    is_valid_password = verify_password(password=hash_password(password), password_hash=user.password_hash)
+    is_valid_password = verify_password(password=password, password_hash=user.password_hash)
 
     if not is_valid_password:
-        # todo update lockout logic here, increase count...
-        AuthError.invalid_credentials()
+        await user_service.increment_failed_login_attempt(user)
+        raise AuthError.invalid_credentials()
 
     if not user.is_verified:
-        AuthError.account_not_verified()
+        raise AuthError.account_not_verified()
 
     if not user.is_active:
-        AuthError.account_inactive()
+        raise AuthError.account_inactive()
 
-    # todo, if all success, reset the lockout logic here
+    await user_service.reset_account_lock(user)
 
     access_token = create_access_token(
         user_data={

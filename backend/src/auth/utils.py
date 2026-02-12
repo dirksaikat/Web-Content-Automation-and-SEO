@@ -4,6 +4,7 @@ import jwt
 import uuid
 from src.config import Config
 import logging
+import bcrypt
 
 ACCESS_TOKEN_EXPIRY = 3600
 
@@ -16,7 +17,10 @@ password_context = CryptContext(
 
 
 def verify_password(password: str, password_hash: str) -> bool:
-    return password == password_hash
+    try:
+        return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
+    except Exception as e:
+        return False
 
 
 def create_access_token(user_data: dict, expiry: timedelta = None, refresh: bool = False):

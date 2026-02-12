@@ -9,9 +9,9 @@ from src.util.email_util import validate_email
 from src.errors.auth_error import AuthError
 from .otp_utils import hash_otp
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
+from src.di.services_di import get_user_service
 
 otp_route = APIRouter()
-user_service = UserService()
 otp_service = OtpService()
 
 register_rate_limiter = get_rate_limiter(
@@ -25,7 +25,8 @@ register_rate_limiter = get_rate_limiter(
 @otp_route.post("/verify-account")
 async def verify_account(data: AccountVerificationSchema,
                          session: AsyncSession = Depends(get_session),
-                         _: None = Depends(register_rate_limiter),) -> EmailVerificationResponseSchema:
+                         user_service: UserService = Depends(get_user_service),
+                         _: None = Depends(register_rate_limiter), ) -> EmailVerificationResponseSchema:
     email = data.email
     email_validation = await validate_email(email)
     if not email_validation["valid"]:
@@ -42,11 +43,11 @@ async def verify_account(data: AccountVerificationSchema,
         await otp_service.delete_otp(email=data.email, code=data.otp, purpose="account_verification", session=session)
         raise AuthError.invalid_otp()
 
-    user = await user_service.get_user_by_email(email=data.email, session=session)
+    user = await user_service.get_user_by_email(email=data.email)
     if not user:
         raise AuthError.user_not_found()
 
-    await user_service.update_user(user=user, session=session, is_verified=True)
+    await user_service.update_user(user=user, is_verified=True)
 
     await otp_service.delete_otp(email=data.email, code=hash_otp(data.otp), purpose="account_verification",
                                  session=session)

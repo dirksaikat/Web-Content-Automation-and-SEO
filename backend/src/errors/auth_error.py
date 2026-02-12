@@ -2,7 +2,6 @@ from .app_exception import AppException
 from .app_exception import ErrorDef
 from fastapi import status
 
-
 AUTH_INVALID_CREDENTIALS = ErrorDef(
     code="AUTH_INVALID_CREDENTIALS",
     status=status.HTTP_401_UNAUTHORIZED,
@@ -117,9 +116,10 @@ class AuthError:
     @staticmethod
     def invalid_otp() -> AppException:
         return AppException(error=AUTH_INVALID_OTP)
+
     @staticmethod
-    def account_locked() -> AppException:
-        return AppException(error=AUTH_ACCOUNT_LOCKED)
+    def account_locked(**details) -> AppException:
+        return AppException(error=AUTH_ACCOUNT_LOCKED, details=details)
 
     @staticmethod
     def account_inactive() -> AppException:
