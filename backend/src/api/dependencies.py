@@ -1,9 +1,9 @@
 from fastapi.security import HTTPBearer
 from fastapi import Request, Depends
-from .utils import decode_token
+from src.core.security.token_util import decode_access_token
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .service import UserService
+from src.features.auth.service import UserService
 from src.di.services_di import get_user_service
 from src.errors.errors import InvalidToken, AccessTokenRequired, RefreshTokenRequired
 
@@ -25,7 +25,7 @@ class TokenBearer(HTTPBearer):
         if not self.is_valid_token(token):
             raise InvalidToken()
 
-        token_data = decode_token(token)
+        token_data = decode_access_token(token)
 
         # if await token_in_blocklist(token_data['jti']):
         #     raise HTTPException(
@@ -41,7 +41,7 @@ class TokenBearer(HTTPBearer):
         return token_data
 
     def is_valid_token(self, jwt_token: str) -> bool:
-        token_data = decode_token(jwt_token)
+        token_data = decode_access_token(jwt_token)
         return True if token_data is not None else False
 
     def verify_token_data(self, token_dict: dict):

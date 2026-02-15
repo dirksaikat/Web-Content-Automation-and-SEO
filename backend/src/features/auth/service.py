@@ -1,9 +1,9 @@
 from datetime import timedelta
 
-from .models import User
+from src.features.auth.models import User
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
-from .schemas import CreateUserRequestSchema
+from src.features.auth.request_schema import CreateUserRequestSchema
 from src.util.email_util import normalize_email
 from src.core.security.password_util import hash_password
 from src.util.date_util import utc_now

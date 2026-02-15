@@ -6,7 +6,7 @@ from typing import Any
 import jwt
 from jwt import InvalidTokenError
 
-from src.core.config.settings import Settings
+from src.core.config.settings import Config
 from src.core.utils.compat import generate_uuid
 
 
@@ -16,13 +16,13 @@ def _now() -> int:
 
 
 def create_access_token(user_id: str, role: str, device_id: str | None = None) -> tuple[str, int]:
-    secret = Settings.JWT_SECRET
+    secret = Config.JWT_SECRET
     if not secret:
         raise RuntimeError("DEVICE_JWT_SECRET must be set")
 
     # Access tokens are short-lived (1 hour)
-    ttl_minutes = Settings.ACCESS_TOKEN_TTL_MIN
-    algo = Settings.JWT_ALGO
+    ttl_minutes = Config.ACCESS_TOKEN_TTL_MIN
+    algo = Config.JWT_ALGO
 
     iat = _now()
     exp = iat + (ttl_minutes * 60)
@@ -45,10 +45,10 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
     if not token:
         return None
 
-    secret = Settings.JWT_SECRET
+    secret = Config.JWT_SECRET
     if not secret:
         return None
-    algo = Settings.JWT_ALGO
+    algo = Config.JWT_ALGO
 
     try:
         payload = jwt.decode(token, secret, algorithms=[algo], options={"require": ["sub", "exp", "iat", "type"]})
@@ -66,13 +66,13 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
 
 def create_refresh_token(user_id: str, device_id: str, parent_token_hash: str | None = None) -> tuple[str, str, int]:
 
-    secret = Settings.JWT_SECRET
+    secret = Config.JWT_SECRET
     if not secret:
         raise RuntimeError("DEVICE_JWT_SECRET must be set")
 
     # Refresh tokens are long-lived (30 days)
-    ttl_days = Settings.REFRESH_TOKEN_TTL_DAYS
-    algo = Settings.JWT_ALGO
+    ttl_days = Config.REFRESH_TOKEN_TTL_DAYS
+    algo = Config.JWT_ALGO
 
     iat = _now()
     exp = iat + (ttl_days * 86400)  # 86400 seconds = 1 day
@@ -104,10 +104,10 @@ def decode_refresh_token(token: str) -> dict[str, Any] | None:
     if not token:
         return None
 
-    secret = Settings.JWT_SECRET
+    secret = Config.JWT_SECRET
     if not secret:
         return None
-    algo = Settings.JWT_ALGO
+    algo = Config.JWT_ALGO
 
     try:
         payload = jwt.decode(token, secret, algorithms=[algo], options={"require": ["sub", "exp", "iat", "type"]})

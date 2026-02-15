@@ -26,14 +26,3 @@ class CreateUserRequestSchema(BaseModel):
 class LoginRequestSchema(BaseModel):
     email: str = Field(max_length=40)
     password: str = Field(min_length=6)
-
-
-class CreateUserResponseSchema(BaseModel):
-    message: str = Field(
-        default="Registration successful! Please check your email to verify your account.",
-        description="Success message",
-    )
-    user: UserSchema = Field(..., description="Registered user info")
-    email_sent: bool = Field(default=True, description="Whether verification email was sent")
-
-

@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, status
-from .service import UserService
+from src.features.auth.service import UserService
 from src.otp.service import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .utils import create_access_token, verify_password
-from .dependencies import RefreshTokenBearer, AccessTokenBearer
-from datetime import timedelta, datetime
+from src.core.security.token_util import create_access_token, create_refresh_token
+from src.api.dependencies import RefreshTokenBearer, AccessTokenBearer
+from datetime import datetime
 from fastapi.responses import JSONResponse
 from src.errors.errors import InvalidToken
 from src.otp.otp_utils import create_otp_schema
@@ -18,7 +18,9 @@ from redis.asyncio import Redis
 from src.di.services_di import get_user_service
 from src.infra.redis_client import get_redis
 from src.errors.auth_error import AuthError
-from .schemas import UserSchema, CreateUserResponseSchema, CreateUserRequestSchema, LoginRequestSchema
+from src.features.auth.request_schema import UserSchema, CreateUserRequestSchema, LoginRequestSchema
+from src.features.auth.response_schema import CreateUserResponseSchema, LoginResponse
+from src.core.security.password_util import verify_password
 
 auth_router = APIRouter()
 otp_service = OtpService()
@@ -90,7 +92,7 @@ async def create_user_account(
 async def login_user(
         login_data: LoginRequestSchema,
         user_service: UserService = Depends(get_user_service),
-):
+) -> LoginResponse:
     email = login_data.email
     password = login_data.password
 
@@ -120,32 +122,14 @@ async def login_user(
 
     await user_service.reset_account_lock(user)
 
-    access_token = create_access_token(
-        user_data={
-            "email": user.email,
-            "user_uid": str(user.uid)
-        }
-    )
+    access_token, access_exp = create_access_token(str(user.uid), role="user", device_id="234")
+    refresh_token, refresh_hash, refresh_exp = create_refresh_token(str(user.uid), device_id="234")
 
-    refresh_token = create_access_token(
-        user_data={
-            "email": user.email,
-            "user_uid": str(user.uid)
-        },
-        refresh=True,
-        expiry=timedelta(days=REFRESH_TOKEN_EXPIRY)
-    )
-
-    return JSONResponse(
-        content={
-            "message": "Login successful",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": {
-                "email": user.email,
-                "uid": str(user.uid)
-            }
-        }
+    return LoginResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_at=access_exp,
+        user=UserSchema.model_validate(user)
     )
 
 

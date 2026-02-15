@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.database.main import get_session
 from .schemas import AccountVerificationSchema, EmailVerificationResponseSchema
-from src.auth.service import UserService
+from src.features.auth.service import UserService
 from .service import OtpService
 from src.otp.otp_utils import verify_code_matches
 from src.util.email_util import validate_email
