@@ -3,7 +3,7 @@ from fastapi import Request
 
 from enum import Enum
 from src.infra.redis_client import get_redis
-from src.errors.auth_error import AuthError
+from src.features.auth.auth_error import AuthError
 
 
 class RateLimitKey(Enum):

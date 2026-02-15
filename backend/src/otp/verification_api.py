@@ -6,7 +6,7 @@ from src.features.auth.service import UserService
 from .service import OtpService
 from src.otp.otp_utils import verify_code_matches
 from src.util.email_util import validate_email
-from src.errors.auth_error import AuthError
+from src.features.auth.auth_error import AuthError
 from .otp_utils import hash_otp
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.di.services_di import get_user_service

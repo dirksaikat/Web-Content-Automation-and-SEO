@@ -17,7 +17,7 @@ from src.util.date_util import utc_now
 from redis.asyncio import Redis
 from src.di.services_di import get_user_service
 from src.infra.redis_client import get_redis
-from src.errors.auth_error import AuthError
+from src.features.auth.auth_error import AuthError
 from src.features.auth.request_schema import UserSchema, CreateUserRequestSchema, LoginRequestSchema
 from src.features.auth.response_schema import CreateUserResponseSchema, LoginResponse
 from src.core.security.password_util import verify_password
