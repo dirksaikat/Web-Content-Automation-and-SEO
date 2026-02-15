@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     MAIL_SSL_TLS: bool = False
     USE_CREDENTIALS: bool = True
     VALIDATE_CERTS: bool = True
+    ACCESS_TOKEN_TTL_MIN: int = 60
+    REFRESH_TOKEN_TTL_DAYS: int = 30
 
     REDIS_URL: str = Field(
         default="redis://127.0.0.1:6379/0", description="Redis connection URL for caching and sessions"

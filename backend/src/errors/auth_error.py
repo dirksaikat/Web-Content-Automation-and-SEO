@@ -1,5 +1,5 @@
-from .app_exception import AppException
-from .app_exception import ErrorDef
+from src.core.exceptions.app_exception import AppException
+from src.core.exceptions.app_exception import ErrorDef
 from fastapi import status
 
 AUTH_INVALID_CREDENTIALS = ErrorDef(

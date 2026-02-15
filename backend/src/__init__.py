@@ -2,10 +2,10 @@ from fastapi import FastAPI
 from .auth.auth_api import auth_router
 from .otp.verification_api import otp_route
 from contextlib import asynccontextmanager
-from src.db.main import init_db
+from src.core.database.main import init_db
 from src.errors.register_all_errors import register_all_errors
 from src.middlewares.middleware import register_middleware
-from src.errors.handlers import register_exception_handlers
+from src.core.exceptions.handlers import register_exception_handlers
 
 
 @asynccontextmanager

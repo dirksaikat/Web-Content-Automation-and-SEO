@@ -1,11 +1,11 @@
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi import Request, status, Depends
+from fastapi.security import HTTPBearer
+from fastapi import Request, Depends
 from .utils import decode_token
-from src.db.main import get_session
+from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .service import UserService
 from src.di.services_di import get_user_service
-from src.errors.errors import InvalidToken, RevokedToken, AccessTokenRequired, RefreshTokenRequired
+from src.errors.errors import InvalidToken, AccessTokenRequired, RefreshTokenRequired
 
 
 class TokenBearer(HTTPBearer):

@@ -2,7 +2,7 @@ from passlib.context import CryptContext
 from datetime import timedelta, datetime
 import jwt
 import uuid
-from src.config import Config
+from src.core.config.settings import Config
 import logging
 import bcrypt
 

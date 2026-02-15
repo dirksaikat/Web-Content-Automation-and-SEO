@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from .service import UserService
 from src.otp.service import OtpService
-from src.db.main import get_session
+from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from .utils import create_access_token, verify_password
 from .dependencies import RefreshTokenBearer, AccessTokenBearer
@@ -12,7 +12,7 @@ from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.util.email_util import validate_email
-from src.util.password_util import validate_password_strength
+from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
 from src.di.services_di import get_user_service
