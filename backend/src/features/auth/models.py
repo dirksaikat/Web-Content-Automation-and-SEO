@@ -1,12 +1,29 @@
 from sqlmodel import SQLModel, Field, Column
 import sqlalchemy.dialects.postgresql as pg
-from sqlalchemy import String, Boolean, Integer, DateTime
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+from uuid import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlmodel import Relationship
+from sqlalchemy.sql import func, text
+from sqlalchemy import (
+    TIMESTAMP,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 
 
-class User(SQLModel, table=True):
+class UserModel(SQLModel, table=True):
     __tablename__ = "users"
 
     uid: uuid.UUID = Field(
@@ -33,5 +50,27 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
     updated_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
 
+    refresh_tokens: List["RefreshTokenModel"] = Relationship(back_populates="user", sa_relationship_kwargs={
+            "cascade": "all, delete-orphan"
+        })
+
     def __repr__(self):
         return f"<User {self.username}>"
+
+
+class RefreshTokenModel(SQLModel, table=True):
+
+    __tablename__ = "refresh_tokens"
+
+    id: uuid.UUID = Field(sa_column=Column(UUID(as_uuid=False), primary_key=True, server_default=text("uuid_generate_v7()")))
+    token_hash: str = Field(sa_column=Column(String(64), nullable=False, unique=True))
+    user_id: uuid.UUID = Field(sa_column=Column(UUID(as_uuid=False), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False))
+    device_id: str = Field(sa_column=Column(String(255), nullable=True))
+    parent_token_hash: str = Field(sa_column=Column(String(64), nullable=True))
+    is_revoked: bool = Field(sa_column=Column(Boolean, nullable=False, server_default="false"))
+    revoked_at: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True))
+    expires_at: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True))
+    created_at: datetime = Field(Column(TIMESTAMP, nullable=False, server_default=text("NOW()")))
+
+    # Relationship
+    user: Optional["UserModel"] = Relationship(back_populates="refresh_tokens")

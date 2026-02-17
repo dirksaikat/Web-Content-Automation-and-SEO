@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from src.features.auth.models import User
+from src.features.auth.models import UserModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from src.features.auth.request_schema import CreateUserRequestSchema
@@ -16,7 +16,7 @@ class UserService:
 
     async def get_user_by_email(self, email: str):
         normalized_email = normalize_email(email)
-        statement = select(User).where(User.normalized_email == normalized_email)
+        statement = select(UserModel).where(UserModel.normalized_email == normalized_email)
         result = await self.session.exec(statement=statement)
         user = result.first()
         return user
@@ -27,7 +27,7 @@ class UserService:
 
     async def create_user(self, user_data: CreateUserRequestSchema):
         user_data_dict = user_data.model_dump()
-        new_user = User(
+        new_user = UserModel(
             **user_data_dict
         )
         new_user.password_hash = hash_password(user_data_dict["password"])
@@ -36,7 +36,7 @@ class UserService:
         await self.session.commit()
         return new_user
 
-    async def update_user(self, user: User, **kwargs) -> User | None:
+    async def update_user(self, user: UserModel, **kwargs) -> UserModel | None:
         if not user:
             return None
 
@@ -47,12 +47,12 @@ class UserService:
         await self.session.commit()
         return user
 
-    async def reset_account_lock(self, user: User):
+    async def reset_account_lock(self, user: UserModel):
         user.account_locked_until = None
         user.failed_login_attempts = 0
         await self.session.commit()
 
-    async def increment_failed_login_attempt(self, user: User):
+    async def increment_failed_login_attempt(self, user: UserModel):
         user.failed_login_attempts += 1
         user.last_failed_login = utc_now()
         # Lock account if max attempts reached
