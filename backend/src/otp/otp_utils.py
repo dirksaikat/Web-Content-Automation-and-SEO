@@ -9,12 +9,12 @@ def hash_otp(code: str) -> str:
     return hashlib.sha256(code.encode()).hexdigest()
 
 
-def create_otp_schema(email: str, user_uid: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpSchema:
+def create_otp_schema(email: str, user_id: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpSchema:
     code = f"{random.randint(100000, 999999)}"
     digest = hash_otp(code)
     return CreateOtpSchema(
         email=email,
-        user_uid=user_uid,
+        user_id=user_id,
         code=code,
         purpose=purpose,
         token_digest=digest,

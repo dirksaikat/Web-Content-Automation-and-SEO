@@ -15,7 +15,7 @@ class OtpVerification(SQLModel, table=True):
         )
     )
     email: str
-    user_uid: uuid.UUID = Field(default=None, foreign_key="users.uid", nullable=False)
+    user_id: uuid.UUID = Field(default=None, foreign_key="users.id", nullable=False)
     token_digest: str = Field(max_length=128, unique=True, index=True, nullable=False)
     purpose: str = Field(default="verify", max_length=32, nullable=False)
     expires_at: datetime = Field(nullable=False)

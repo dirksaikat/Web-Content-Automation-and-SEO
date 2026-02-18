@@ -26,7 +26,7 @@ from sqlalchemy import (
 class UserModel(SQLModel, table=True):
     __tablename__ = "users"
 
-    uid: uuid.UUID = Field(
+    id: uuid.UUID = Field(
         sa_column=Column(
             pg.UUID,
             nullable=False,
@@ -62,9 +62,9 @@ class RefreshTokenModel(SQLModel, table=True):
 
     __tablename__ = "refresh_tokens"
 
-    id: uuid.UUID = Field(sa_column=Column(UUID(as_uuid=False), primary_key=True, server_default=text("uuid_generate_v7()")))
+    id: uuid.UUID = Field(sa_column=Column(pg.UUID, primary_key=True))
     token_hash: str = Field(sa_column=Column(String(64), nullable=False, unique=True))
-    user_id: uuid.UUID = Field(sa_column=Column(UUID(as_uuid=False), ForeignKey("users.uid", ondelete="CASCADE"), nullable=False))
+    user_id: uuid.UUID = Field(default=None, sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False))
     device_id: str = Field(sa_column=Column(String(255), nullable=True))
     parent_token_hash: str = Field(sa_column=Column(String(64), nullable=True))
     is_revoked: bool = Field(sa_column=Column(Boolean, nullable=False, server_default="false"))

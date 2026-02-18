@@ -9,54 +9,49 @@ from src.core.security.password_util import hash_password
 from src.util.date_util import utc_now
 
 
-class UserService:
+class UserRepository:
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def get_user_by_email(self, email: str):
+    async def get_user_by_email(self, email: str, db: AsyncSession):
         normalized_email = normalize_email(email)
         statement = select(UserModel).where(UserModel.normalized_email == normalized_email)
-        result = await self.session.exec(statement=statement)
+        result = await db.exec(statement=statement)
         user = result.first()
         return user
 
-    async def user_exists(self, email: str):
-        user = await self.get_user_by_email(email)
+    async def user_exists(self, email: str, db: AsyncSession):
+        user = await self.get_user_by_email(email=email, db=db)
         return user is not None
 
-    async def create_user(self, user_data: CreateUserRequestSchema):
+    async def create_user(self, user_data: CreateUserRequestSchema, db: AsyncSession):
         user_data_dict = user_data.model_dump()
         new_user = UserModel(
             **user_data_dict
         )
         new_user.password_hash = hash_password(user_data_dict["password"])
         new_user.normalized_email = normalize_email(user_data.email)
-        self.session.add(new_user)
-        await self.session.commit()
+        db.add(new_user)
+        await db.flush()
         return new_user
 
-    async def update_user(self, user: UserModel, **kwargs) -> UserModel | None:
+    async def update_user(self, user: UserModel, db: AsyncSession, **kwargs) -> UserModel | None:
         if not user:
             return None
-
         for key, value in kwargs.items():
             if hasattr(user, key):
                 setattr(user, key, value)
-
-        await self.session.commit()
+        await db.flush()
         return user
 
-    async def reset_account_lock(self, user: UserModel):
+    async def reset_account_lock(self, user: UserModel, db: AsyncSession):
         user.account_locked_until = None
         user.failed_login_attempts = 0
-        await self.session.commit()
+        await db.flush()
 
-    async def increment_failed_login_attempt(self, user: UserModel):
+    async def increment_failed_login_attempt(self, user: UserModel, db: AsyncSession):
         user.failed_login_attempts += 1
         user.last_failed_login = utc_now()
         # Lock account if max attempts reached
         if user.failed_login_attempts >= 3:
             user.account_locked_until = utc_now() + timedelta(minutes=5)
-        await self.session.commit()
+        await db.flush()
 

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from src.features.auth.service import UserService
+from src.features.auth.user_repository import UserRepository
 from src.otp.service import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -15,7 +15,7 @@ from src.util.email_util import validate_email
 from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
-from src.di.services_di import get_user_service
+from src.features.auth.services_di import get_user_repository
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
 from src.features.auth.request_schema import UserSchema, CreateUserRequestSchema, LoginRequestSchema
@@ -37,8 +37,8 @@ register_rate_limiter = get_rate_limiter(
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_account(
         user_data: CreateUserRequestSchema,
-        user_service: UserService = Depends(get_user_service),
-        session: AsyncSession = Depends(get_session),
+        user_service: UserRepository = Depends(get_user_repository),
+        db: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
         _: None = Depends(register_rate_limiter),
 ) -> CreateUserResponseSchema:
@@ -60,14 +60,19 @@ async def create_user_account(
         if not acquired:
             raise AuthError.rate_limited(message="Registration in progress. Please try again.")
 
-        user_exists = await user_service.user_exists(email=user_data.email)
+        user_exists = await user_service.user_exists(email=user_data.email, db=db)
 
         if user_exists:
             raise AuthError.email_already_registered()
 
-        new_user = await user_service.create_user(user_data=user_data)
-        otp_schema = create_otp_schema(email=user_data.email, user_uid=new_user.uid, purpose="account_verification")
-        await otp_service.save_generated_otp(otp_schema=otp_schema, session=session)
+        new_user = await user_service.create_user(user_data=user_data, db=db)
+        print("New user")
+        print(new_user.id)
+        otp_schema = create_otp_schema(email=user_data.email, user_id=new_user.id, purpose="account_verification")
+        await otp_service.save_generated_otp(otp_schema=otp_schema, db=db)
+
+        await db.commit()
+
         html = f"<h1>Your otp is {otp_schema.code} </h1>"
         await send_mail_message(
             recipients=[new_user.email],
@@ -82,7 +87,7 @@ async def create_user_account(
         )
 
     except Exception as e:
-        await session.rollback()
+        await db.rollback()
         raise
     finally:
         await lock.release()
@@ -91,12 +96,13 @@ async def create_user_account(
 @auth_router.post("/login")
 async def login_user(
         login_data: LoginRequestSchema,
-        user_service: UserService = Depends(get_user_service),
+        db: AsyncSession = Depends(get_session),
+        user_service: UserRepository = Depends(get_user_repository),
 ) -> LoginResponse:
     email = login_data.email
     password = login_data.password
 
-    user = await user_service.get_user_by_email(email=email)
+    user = await user_service.get_user_by_email(email=email, db=db)
 
     if not user:
         raise AuthError.invalid_credentials()
@@ -106,12 +112,12 @@ async def login_user(
             minutes_left = int((user.account_locked_until - utc_now()).total_seconds() / 60)
             raise AuthError.account_locked(minutes_remaining=minutes_left)
         else:
-            await user_service.reset_account_lock(user)
+            await user_service.reset_account_lock(user=user, db=db)
 
     is_valid_password = verify_password(password=password, password_hash=user.password_hash)
 
     if not is_valid_password:
-        await user_service.increment_failed_login_attempt(user)
+        await user_service.increment_failed_login_attempt(user=user, db=db)
         raise AuthError.invalid_credentials()
 
     if not user.is_verified:
@@ -120,10 +126,12 @@ async def login_user(
     if not user.is_active:
         raise AuthError.account_inactive()
 
-    await user_service.reset_account_lock(user)
+    await user_service.reset_account_lock(user=user, db=db)
 
-    access_token, access_exp = create_access_token(str(user.uid), role="user", device_id="234")
-    refresh_token, refresh_hash, refresh_exp = create_refresh_token(str(user.uid), device_id="234")
+    access_token, access_exp = create_access_token(str(user.id), role="user", device_id="234")
+    refresh_token, refresh_hash, refresh_exp = create_refresh_token(str(user.id), device_id="234")
+
+    await db.commit()
 
     return LoginResponse(
         access_token=access_token,
