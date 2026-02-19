@@ -168,6 +168,6 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(AppException, app_exception_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
+    #app.add_exception_handler(SQLAlchemyError, sqlalchemy_exception_handler)
     app.add_exception_handler(RedisError, redis_exception_handler)
     app.add_exception_handler(Exception, generic_exception_handler)

@@ -3,11 +3,8 @@ import sqlalchemy.dialects.postgresql as pg
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from uuid import UUID
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlmodel import Relationship
-from sqlalchemy.sql import func, text
+from sqlalchemy.sql import text
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -51,26 +48,25 @@ class UserModel(SQLModel, table=True):
     updated_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
 
     refresh_tokens: List["RefreshTokenModel"] = Relationship(back_populates="user", sa_relationship_kwargs={
-            "cascade": "all, delete-orphan"
-        })
+        "cascade": "all, delete-orphan"
+    })
 
     def __repr__(self):
         return f"<User {self.username}>"
 
 
 class RefreshTokenModel(SQLModel, table=True):
-
     __tablename__ = "refresh_tokens"
 
-    id: uuid.UUID = Field(sa_column=Column(pg.UUID, primary_key=True))
+    id: uuid.UUID = Field(sa_column=Column(pg.UUID, primary_key=True, default=uuid.uuid4))
     token_hash: str = Field(sa_column=Column(String(64), nullable=False, unique=True))
-    user_id: uuid.UUID = Field(default=None, sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False))
+    user_id: uuid.UUID = Field(default=None,
+                               sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False))
     device_id: str = Field(sa_column=Column(String(255), nullable=True))
-    parent_token_hash: str = Field(sa_column=Column(String(64), nullable=True))
     is_revoked: bool = Field(sa_column=Column(Boolean, nullable=False, server_default="false"))
     revoked_at: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True))
     expires_at: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True))
-    created_at: datetime = Field(Column(TIMESTAMP, nullable=False, server_default=text("NOW()")))
+    created_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
 
     # Relationship
     user: Optional["UserModel"] = Relationship(back_populates="refresh_tokens")

@@ -6,7 +6,7 @@ from datetime import datetime
 
 class OtpVerification(SQLModel, table=True):
     __tablename__ = "otp_verification"
-    uid: uuid.UUID = Field(
+    id: uuid.UUID = Field(
         sa_column=Column(
             pg.UUID,
             nullable=False,

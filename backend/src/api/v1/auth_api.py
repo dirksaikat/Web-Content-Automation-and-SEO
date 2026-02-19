@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 from src.features.auth.user_repository import UserRepository
+from src.features.auth.token_repository import TokenRepository
 from src.otp.service import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -15,7 +16,7 @@ from src.util.email_util import validate_email
 from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
-from src.features.auth.services_di import get_user_repository
+from src.features.auth.services_di import get_user_repository, get_token_repository
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
 from src.features.auth.request_schema import UserSchema, CreateUserRequestSchema, LoginRequestSchema
@@ -37,7 +38,7 @@ register_rate_limiter = get_rate_limiter(
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_account(
         user_data: CreateUserRequestSchema,
-        user_service: UserRepository = Depends(get_user_repository),
+        user_repository: UserRepository = Depends(get_user_repository),
         db: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
         _: None = Depends(register_rate_limiter),
@@ -60,12 +61,12 @@ async def create_user_account(
         if not acquired:
             raise AuthError.rate_limited(message="Registration in progress. Please try again.")
 
-        user_exists = await user_service.user_exists(email=user_data.email, db=db)
+        user_exists = await user_repository.user_exists(email=user_data.email, db=db)
 
         if user_exists:
             raise AuthError.email_already_registered()
 
-        new_user = await user_service.create_user(user_data=user_data, db=db)
+        new_user = await user_repository.create_user(user_data=user_data, db=db)
         print("New user")
         print(new_user.id)
         otp_schema = create_otp_schema(email=user_data.email, user_id=new_user.id, purpose="account_verification")
@@ -97,12 +98,13 @@ async def create_user_account(
 async def login_user(
         login_data: LoginRequestSchema,
         db: AsyncSession = Depends(get_session),
-        user_service: UserRepository = Depends(get_user_repository),
+        user_repository: UserRepository = Depends(get_user_repository),
+        token_repository: TokenRepository = Depends(get_token_repository),
 ) -> LoginResponse:
     email = login_data.email
     password = login_data.password
 
-    user = await user_service.get_user_by_email(email=email, db=db)
+    user = await user_repository.get_user_by_email(email=email, db=db)
 
     if not user:
         raise AuthError.invalid_credentials()
@@ -112,12 +114,12 @@ async def login_user(
             minutes_left = int((user.account_locked_until - utc_now()).total_seconds() / 60)
             raise AuthError.account_locked(minutes_remaining=minutes_left)
         else:
-            await user_service.reset_account_lock(user=user, db=db)
+            await user_repository.reset_account_lock(user=user, db=db)
 
     is_valid_password = verify_password(password=password, password_hash=user.password_hash)
 
     if not is_valid_password:
-        await user_service.increment_failed_login_attempt(user=user, db=db)
+        await user_repository.increment_failed_login_attempt(user=user, db=db)
         raise AuthError.invalid_credentials()
 
     if not user.is_verified:
@@ -126,11 +128,17 @@ async def login_user(
     if not user.is_active:
         raise AuthError.account_inactive()
 
-    await user_service.reset_account_lock(user=user, db=db)
+    await user_repository.reset_account_lock(user=user, db=db)
 
     access_token, access_exp = create_access_token(str(user.id), role="user", device_id="234")
     refresh_token, refresh_hash, refresh_exp = create_refresh_token(str(user.id), device_id="234")
-
+    await token_repository.save_refresh_token(
+        token_hash=refresh_hash,
+        token_expiry=refresh_exp,
+        user_id=str(user.id),
+        device_id=None,
+        db=db
+    )
     await db.commit()
 
     return LoginResponse(
