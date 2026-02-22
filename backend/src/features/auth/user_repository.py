@@ -11,18 +11,22 @@ from src.util.date_util import utc_now
 
 class UserRepository:
 
-    async def get_user_by_email(self, email: str, db: AsyncSession):
+    async def get_user_by_email(self, email: str, db: AsyncSession) -> UserModel | None:
         normalized_email = normalize_email(email)
         statement = select(UserModel).where(UserModel.normalized_email == normalized_email)
         result = await db.exec(statement=statement)
         user = result.first()
         return user
 
-    async def user_exists(self, email: str, db: AsyncSession):
+    async def get_user_by_id(self, user_id: str, db: AsyncSession) -> UserModel | None:
+        result = await db.exec(select(UserModel).where(UserModel.id == user_id))
+        return result.first()
+
+    async def user_exists(self, email: str, db: AsyncSession) -> bool:
         user = await self.get_user_by_email(email=email, db=db)
         return user is not None
 
-    async def create_user(self, user_data: CreateUserRequestSchema, db: AsyncSession):
+    async def create_user(self, user_data: CreateUserRequestSchema, db: AsyncSession) -> UserModel:
         user_data_dict = user_data.model_dump()
         new_user = UserModel(
             **user_data_dict

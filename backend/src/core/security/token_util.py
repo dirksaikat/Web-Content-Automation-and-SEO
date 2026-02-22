@@ -2,10 +2,8 @@ import hashlib
 import secrets
 import time
 from typing import Any
-
 import jwt
 from jwt import InvalidTokenError
-
 from src.core.config.settings import Config
 from src.core.utils.compat import generate_uuid
 
@@ -13,6 +11,10 @@ from src.core.utils.compat import generate_uuid
 def _now() -> int:
     """Get current Unix timestamp."""
     return int(time.time())
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def create_access_token(user_id: str, role: str, device_id: str | None = None) -> tuple[str, int]:
@@ -95,7 +97,7 @@ def create_refresh_token(user_id: str, device_id: str, parent_token_hash: str | 
 
     token = jwt.encode(payload, secret, algorithm=algo)
 
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    token_hash = hash_token(token)
 
     return token, token_hash, exp
 
@@ -121,6 +123,3 @@ def decode_refresh_token(token: str) -> dict[str, Any] | None:
     except InvalidTokenError as e:
         return None
 
-
-def hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()

@@ -35,3 +35,21 @@ class LoginResponse(BaseModel):
             ]
         }
     }
+
+
+class RefreshTokenResponse(BaseModel):
+    access_token: str = Field(..., description="JWT access token")
+    refresh_token: str = Field(..., description="JWT refresh token")
+    expires_at: int = Field(..., description="Unix timestamp when access token expires")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "expires_at": 1702000000,
+                }
+            ]
+        }
+    }

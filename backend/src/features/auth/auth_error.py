@@ -14,6 +14,12 @@ AUTH_TOKEN_EXPIRED = ErrorDef(
     message="Token has expired",
 )
 
+AUTH_TOKEN_INVALID = ErrorDef(
+    code="AUTH_TOKEN_INVALID",
+    status=status.HTTP_401_UNAUTHORIZED,
+    message="Token is invalid.",
+)
+
 AUTH_FORBIDDEN = ErrorDef(
     code="AUTH_FORBIDDEN",
     status=status.HTTP_403_FORBIDDEN,
@@ -100,6 +106,11 @@ class AuthError:
     @staticmethod
     def token_expired() -> AppException:
         return AppException(AUTH_TOKEN_EXPIRED)
+
+    @staticmethod
+    def token_invalid(message: str = None) -> AppException:
+        return AppException(AUTH_TOKEN_INVALID, message=message)
+
 
     @staticmethod
     def email_already_registered() -> AppException:

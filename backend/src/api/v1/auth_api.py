@@ -4,11 +4,10 @@ from src.features.auth.token_repository import TokenRepository
 from src.otp.service import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
-from src.core.security.token_util import create_access_token, create_refresh_token
-from src.api.dependencies import RefreshTokenBearer, AccessTokenBearer
+from src.core.security.token_util import create_access_token, create_refresh_token, decode_refresh_token, hash_token
+from src.api.dependencies import AccessTokenBearer
 from datetime import datetime
 from fastapi.responses import JSONResponse
-from src.errors.errors import InvalidToken
 from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
@@ -19,9 +18,20 @@ from redis.asyncio import Redis
 from src.features.auth.services_di import get_user_repository, get_token_repository
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
-from src.features.auth.request_schema import UserSchema, CreateUserRequestSchema, LoginRequestSchema
-from src.features.auth.response_schema import CreateUserResponseSchema, LoginResponse
+from src.features.auth.request_schema import (
+    UserSchema,
+    CreateUserRequestSchema,
+    LoginRequestSchema,
+    RefreshAccessTokenRequest
+)
+from src.features.auth.response_schema import (
+    CreateUserResponseSchema,
+    LoginResponse,
+    RefreshTokenResponse
+)
 from src.core.security.password_util import verify_password
+from src.infra.token_cache import TokenCache, get_token_cache
+
 
 auth_router = APIRouter()
 otp_service = OtpService()
@@ -98,6 +108,7 @@ async def create_user_account(
 async def login_user(
         login_data: LoginRequestSchema,
         db: AsyncSession = Depends(get_session),
+        token_cache: TokenCache = Depends(get_token_cache),
         user_repository: UserRepository = Depends(get_user_repository),
         token_repository: TokenRepository = Depends(get_token_repository),
 ) -> LoginResponse:
@@ -139,6 +150,8 @@ async def login_user(
         device_id=None,
         db=db
     )
+
+    await token_cache.clear_user_access_token_blacklist(str(user.id))
     await db.commit()
 
     return LoginResponse(
@@ -149,19 +162,63 @@ async def login_user(
     )
 
 
-@auth_router.get("/refresh_token")
-async def create_new_access_token(
-        token_details: dict = Depends(RefreshTokenBearer())
-):
-    expiry_timestamp = token_details["exp"]
-    if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
-        new_access_token = create_access_token(token_details["user"])
-        return JSONResponse(
-            content={
-                "access_token": new_access_token
-            }
-        )
-    raise InvalidToken()
+@auth_router.post("/token-refresh")
+async def refresh_access_token(
+        data: RefreshAccessTokenRequest,
+        db: AsyncSession = Depends(get_session),
+        token_cache: TokenCache = Depends(get_token_cache),
+        user_repository: UserRepository = Depends(get_user_repository),
+        token_repository: TokenRepository = Depends(get_token_repository),
+) -> RefreshTokenResponse:
+
+    refresh_token = data.refresh_token
+    payload = decode_refresh_token(token=refresh_token)
+
+    if not payload:
+        # todo log here
+        raise AuthError.token_invalid()
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise AuthError.token_invalid(message="Invalid user ID in token.")
+
+    token_hash = hash_token(token=refresh_token)
+    stored_token = await token_repository.get_refresh_token(token_hash=token_hash, db=db)
+
+    if not stored_token:
+        raise AuthError.token_invalid()
+
+    # Check if revoked (possible reuse attack) or expired
+    if stored_token.is_revoked or stored_token.expires_at <= datetime.now():
+        await token_repository.revoke_all_user_tokens(user_id=user_id, db=db)
+        await token_cache.revoke_all_user_tokens(str(user_id))
+        raise AuthError.token_invalid(message="Token has been revoked. All sessions terminated for security.")
+
+    user = await user_repository.get_user_by_id(user_id=str(user_id), db=db)
+
+    if not user:
+        raise AuthError.user_not_found()
+
+    if not user.is_active:
+        raise AuthError.account_inactive()
+
+    await token_repository.revoke_refresh_token(token_hash=token_hash, db=db)
+    await token_cache.revoke_token(token_hash)
+
+    access_token, access_exp = create_access_token(str(user.id), role="user", device_id="234")
+    new_refresh_token, refresh_hash, refresh_exp = create_refresh_token(str(user.id), device_id="234")
+    await token_repository.save_refresh_token(
+        token_hash=refresh_hash,
+        token_expiry=refresh_exp,
+        user_id=str(user.id),
+        device_id=None,
+        db=db
+    )
+    await db.commit()
+
+    return RefreshTokenResponse(
+        access_token=access_token, refresh_token=new_refresh_token, expires_at=access_exp
+    )
 
 
 @auth_router.post("/logout")

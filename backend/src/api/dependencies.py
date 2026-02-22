@@ -5,7 +5,7 @@ from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.features.auth.user_repository import UserRepository
 from src.features.auth.services_di import get_user_repository
-from src.errors.errors import InvalidToken, AccessTokenRequired, RefreshTokenRequired
+from src.errors.errors import InvalidToken, AccessTokenRequired
 
 
 class TokenBearer(HTTPBearer):
@@ -54,12 +54,6 @@ class AccessTokenBearer(TokenBearer):
         if token_data and token_data["refresh"]:
             raise AccessTokenRequired()
 
-
-class RefreshTokenBearer(TokenBearer):
-
-    def verify_token_data(self, token_data: dict):
-        if token_data and not token_data["refresh"]:
-            raise RefreshTokenRequired()
 
 
 async def get_current_user(

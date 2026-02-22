@@ -13,19 +13,11 @@ class InvalidToken(AppException):
     pass
 
 
-class RevokedToken(AppException):
-    """User has provided a token that has been revoked"""
-    pass
-
 
 class AccessTokenRequired(AppException):
     """User has provided a refresh token when an access token is needed"""
     pass
 
-
-class RefreshTokenRequired(AppException):
-    """User has provided an access token when a refresh token is needed"""
-    pass
 
 
 class InsufficientPermission(AppException):
