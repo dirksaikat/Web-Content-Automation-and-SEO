@@ -37,11 +37,11 @@ auth_router = APIRouter()
 otp_service = OtpService()
 REFRESH_TOKEN_EXPIRY = 2
 
-register_rate_limiter = get_rate_limiter(
+auth_rate_limiter = get_rate_limiter(
     limit=3,
     window_seconds=60,
     key_type=RateLimitKey.IP,
-    block_seconds=300
+    block_seconds=3600
 )
 
 
@@ -51,7 +51,7 @@ async def create_user_account(
         user_repository: UserRepository = Depends(get_user_repository),
         db: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
-        _: None = Depends(register_rate_limiter),
+        _: None = Depends(auth_rate_limiter),
 ) -> CreateUserResponseSchema:
     email_validation = await validate_email(user_data.email)
     if not email_validation["valid"]:
@@ -111,6 +111,7 @@ async def login_user(
         token_cache: TokenCache = Depends(get_token_cache),
         user_repository: UserRepository = Depends(get_user_repository),
         token_repository: TokenRepository = Depends(get_token_repository),
+        _: None = Depends(auth_rate_limiter),
 ) -> LoginResponse:
     email = login_data.email
     password = login_data.password
