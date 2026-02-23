@@ -5,7 +5,7 @@ from src.otp.service import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.security.token_util import create_access_token, create_refresh_token, decode_refresh_token, hash_token
-from src.api.dependencies import AccessTokenBearer
+from src.core.security.access_token_bearer import AccessTokenBearer
 from datetime import datetime
 from fastapi.responses import JSONResponse
 from src.otp.otp_utils import create_otp_schema
@@ -18,6 +18,7 @@ from redis.asyncio import Redis
 from src.features.auth.services_di import get_user_repository, get_token_repository
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
+from src.core.security.token_error import TokenError
 from src.features.auth.request_schema import (
     UserSchema,
     CreateUserRequestSchema,
@@ -177,23 +178,23 @@ async def refresh_access_token(
 
     if not payload:
         # todo log here
-        raise AuthError.token_invalid()
+        raise TokenError.token_invalid()
 
     user_id = payload.get("sub")
     if not user_id:
-        raise AuthError.token_invalid(message="Invalid user ID in token.")
+        raise TokenError.token_invalid(message="Invalid user ID in token.")
 
     token_hash = hash_token(token=refresh_token)
     stored_token = await token_repository.get_refresh_token(token_hash=token_hash, db=db)
 
     if not stored_token:
-        raise AuthError.token_invalid()
+        raise TokenError.token_invalid()
 
     # Check if revoked (possible reuse attack) or expired
     if stored_token.is_revoked or stored_token.expires_at <= datetime.now():
         await token_repository.revoke_all_user_tokens(user_id=user_id, db=db)
         await token_cache.revoke_all_user_tokens(str(user_id))
-        raise AuthError.token_invalid(message="Token has been revoked. All sessions terminated for security.")
+        raise TokenError.token_invalid(message="Token has been revoked. All sessions terminated for security.")
 
     user = await user_repository.get_user_by_id(user_id=str(user_id), db=db)
 
@@ -223,7 +224,8 @@ async def refresh_access_token(
 
 
 @auth_router.post("/logout")
-async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
+async def revoke_token(
+        token_details: dict = Depends(AccessTokenBearer())):
     jti = token_details["jti"]
     #await add_jti_to_blocklist(jti=jti)
     return JSONResponse(

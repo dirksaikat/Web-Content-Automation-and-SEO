@@ -31,7 +31,6 @@ class TokenCache:
             #log.error("cache.user_tokens.revoke_error", user_id=user_id, error=str(e))
 
     async def revoke_token(self, token_hash: str, ttl: int | None = None):
-
         key = f"revoked_token:{token_hash}"
         ttl = ttl or self.token_ttl
 
@@ -41,6 +40,51 @@ class TokenCache:
         except Exception as e:
             pass
             # todo log here
+
+    async def blacklist_access_token(self, token_jti: str, ttl_seconds: int):
+        """
+        Blacklist an access token to prevent its use after logout.
+
+        This enables immediate logout by preventing access token reuse.
+        The token is stored until its natural expiration.
+
+        Args:
+            token_jti: JTI (unique ID) from the access token
+            ttl_seconds: Time until token expires (from exp claim)
+        """
+        key = f"blacklist:access:{token_jti}"
+
+        try:
+            await self.redis.setex(key, ttl_seconds, "1")
+            #log.info("cache.access_token.blacklisted", jti=token_jti[:8], ttl=ttl_seconds)
+        except Exception as e:
+            pass
+            #log.error("cache.access_token.blacklist_error", jti=token_jti[:8], error=str(e))
+
+    async def is_access_token_blacklisted(self, token_jti: str) -> bool:
+        """
+        Check if an access token is blacklisted.
+
+        Args:
+            token_jti: JTI (unique ID) from the access token
+
+        Returns:
+            True if token is blacklisted (logged out), False otherwise
+        """
+        key = f"blacklist:access:{token_jti}"
+
+        try:
+            exists = await self.redis.exists(key)
+
+            if exists:
+                pass
+                #log.debug("cache.access_token.blacklisted_hit", jti=token_jti[:8])
+
+            return exists > 0
+        except Exception as e:
+            #log.error("cache.access_token.blacklist_check_error", jti=token_jti[:8], error=str(e))
+            # On error, assume not blacklisted (cautious approach)
+            return False
 
 
 _token_cache_instance: TokenCache | None = None

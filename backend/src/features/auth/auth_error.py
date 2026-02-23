@@ -8,18 +8,6 @@ AUTH_INVALID_CREDENTIALS = ErrorDef(
     message="Invalid email or password",
 )
 
-AUTH_TOKEN_EXPIRED = ErrorDef(
-    code="AUTH_TOKEN_EXPIRED",
-    status=status.HTTP_401_UNAUTHORIZED,
-    message="Token has expired",
-)
-
-AUTH_TOKEN_INVALID = ErrorDef(
-    code="AUTH_TOKEN_INVALID",
-    status=status.HTTP_401_UNAUTHORIZED,
-    message="Token is invalid.",
-)
-
 AUTH_FORBIDDEN = ErrorDef(
     code="AUTH_FORBIDDEN",
     status=status.HTTP_403_FORBIDDEN,
@@ -102,15 +90,6 @@ class AuthError:
             AUTH_INVALID_PASSWORD,
             details=details or None,
         )
-
-    @staticmethod
-    def token_expired() -> AppException:
-        return AppException(AUTH_TOKEN_EXPIRED)
-
-    @staticmethod
-    def token_invalid(message: str = None) -> AppException:
-        return AppException(AUTH_TOKEN_INVALID, message=message)
-
 
     @staticmethod
     def email_already_registered() -> AppException:
