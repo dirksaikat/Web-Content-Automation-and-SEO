@@ -7,7 +7,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.security.token_util import create_access_token, create_refresh_token, decode_refresh_token, hash_token
 from src.core.security.access_token_bearer import AccessTokenBearer
 from datetime import datetime
-from fastapi.responses import JSONResponse
 from src.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
@@ -16,19 +15,23 @@ from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
 from src.features.auth.services_di import get_user_repository, get_token_repository
+import time
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
 from src.core.security.token_error import TokenError
+from src.core.security.token_util import _now
 from src.features.auth.request_schema import (
     UserSchema,
     CreateUserRequestSchema,
     LoginRequestSchema,
-    RefreshAccessTokenRequest
+    RefreshAccessTokenRequest,
+    LogoutRequest
 )
 from src.features.auth.response_schema import (
     CreateUserResponseSchema,
     LoginResponse,
-    RefreshTokenResponse
+    RefreshTokenResponse,
+    LogoutResponse
 )
 from src.core.security.password_util import verify_password
 from src.infra.token_cache import TokenCache, get_token_cache
@@ -225,12 +228,50 @@ async def refresh_access_token(
 
 @auth_router.post("/logout")
 async def revoke_token(
-        token_details: dict = Depends(AccessTokenBearer())):
-    jti = token_details["jti"]
-    #await add_jti_to_blocklist(jti=jti)
-    return JSONResponse(
-        content={
-            "message": "Logged out successfully"
-        },
-        status_code=status.HTTP_200_OK
-    )
+    logout_request: LogoutRequest,
+    payload: dict = Depends(AccessTokenBearer()),
+    token_cache: TokenCache = Depends(get_token_cache),
+    db: AsyncSession = Depends(get_session),
+    token_repository: TokenRepository = Depends(get_token_repository),
+) -> LogoutResponse:
+
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    user_id = payload.get("sub")
+
+    if not jti or not exp or not user_id:
+        raise TokenError.token_invalid("Invalid token payload")
+
+    if logout_request.logout_all_devices:
+        await token_repository.revoke_all_user_tokens(user_id=user_id, db=db)
+    else:
+        refresh_payload = decode_refresh_token(token=logout_request.refresh_token)
+
+        if not refresh_payload:
+            raise TokenError.token_invalid("Refresh token is invalid.")
+
+        if refresh_payload.get("sub") != user_id:
+            raise TokenError.token_invalid("Token mismatch")
+
+        refresh_exp = refresh_payload.get("exp")
+        if refresh_exp < _now():
+            raise TokenError.token_invalid("Refresh token expired.")
+
+        refresh_token_hash = hash_token(token=logout_request.refresh_token)
+
+        existing_hash = await token_repository.get_refresh_token(token_hash=refresh_token_hash, db=db)
+
+        if not existing_hash:
+            raise TokenError.token_invalid()
+
+        if existing_hash.is_revoked:
+            raise TokenError.token_invalid("Refresh token already revoked")
+
+        await token_repository.revoke_refresh_token(token_hash=refresh_token_hash, db=db)
+
+    await db.commit()
+
+    ttl = max(0, exp - int(time.time()))
+    await token_cache.blacklist_access_token(jti, ttl)
+
+    return LogoutResponse(message="Logged out successfully")

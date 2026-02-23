@@ -53,3 +53,17 @@ class RefreshTokenResponse(BaseModel):
             ]
         }
     }
+
+
+class LogoutResponse(BaseModel):
+    """Logout success response."""
+
+    message: str = Field(..., description="Success message")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"message": "Logged out successfully"},
+            ]
+        }
+    }

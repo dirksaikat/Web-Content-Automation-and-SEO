@@ -30,3 +30,11 @@ class LoginRequestSchema(BaseModel):
 
 class RefreshAccessTokenRequest(BaseModel):
     refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
+    logout_all_devices: bool = False
+
+
+

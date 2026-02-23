@@ -40,7 +40,7 @@ class TokenRepository:
         return True
 
     async def revoke_all_user_tokens(self, user_id: str, db: AsyncSession) -> int:
-        result = await db.execute(
+        result = await db.exec(
             update(RefreshTokenModel)
             .where(and_(RefreshTokenModel.user_id == user_id, RefreshTokenModel.is_revoked.is_(False)))
             .values(is_revoked=True, revoked_at=utc_now())
@@ -48,5 +48,4 @@ class TokenRepository:
 
         await db.flush()
         count = result.rowcount or 0
-
         return count
