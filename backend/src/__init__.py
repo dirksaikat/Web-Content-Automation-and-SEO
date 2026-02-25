@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.api.v1.auth_api import auth_router
-from .otp.verification_api import otp_route
+from src.api.v1.otp_verification_api import otp_route
 from contextlib import asynccontextmanager
 from src.core.database.main import init_db
 from src.errors.register_all_errors import register_all_errors

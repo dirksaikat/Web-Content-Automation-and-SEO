@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.database.main import get_session
-from .schemas import AccountVerificationSchema, EmailVerificationResponseSchema
+from src.features.otp.request_schemas import VerifyAccountRequestSchema
+from src.features.otp.response_schemas import EmailVerificationResponseSchema
 from src.features.auth.user_repository import UserRepository
-from .service import OtpService
-from src.otp.otp_utils import verify_code_matches
+from src.features.otp.otp_repository import OtpService
+from src.features.otp.otp_utils import verify_code_matches
 from src.util.email_util import validate_email
 from src.features.auth.auth_error import AuthError
-from .otp_utils import hash_otp
+from src.features.otp.otp_utils import hash_otp
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.features.auth.services_di import get_user_repository
 
@@ -23,7 +24,7 @@ register_rate_limiter = get_rate_limiter(
 
 
 @otp_route.post("/verify-account")
-async def verify_account(data: AccountVerificationSchema,
+async def verify_account(data: VerifyAccountRequestSchema,
                          db: AsyncSession = Depends(get_session),
                          user_service: UserRepository = Depends(get_user_repository),
                          _: None = Depends(register_rate_limiter), ) -> EmailVerificationResponseSchema:

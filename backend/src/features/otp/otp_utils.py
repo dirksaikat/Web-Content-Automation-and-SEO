@@ -1,7 +1,7 @@
 import hashlib
 import random
 from datetime import datetime, timedelta
-from src.otp.schemas import CreateOtpSchema
+from src.features.otp.request_schemas import CreateOtpRequestSchema
 import uuid
 
 
@@ -9,10 +9,10 @@ def hash_otp(code: str) -> str:
     return hashlib.sha256(code.encode()).hexdigest()
 
 
-def create_otp_schema(email: str, user_id: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpSchema:
+def create_otp_schema(email: str, user_id: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpRequestSchema:
     code = f"{random.randint(100000, 999999)}"
     digest = hash_otp(code)
-    return CreateOtpSchema(
+    return CreateOtpRequestSchema(
         email=email,
         user_id=user_id,
         code=code,

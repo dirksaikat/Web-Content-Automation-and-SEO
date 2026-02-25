@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, status
 from src.features.auth.user_repository import UserRepository
 from src.features.auth.token_repository import TokenRepository
-from src.otp.service import OtpService
+from src.features.otp.otp_repository import OtpService
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.security.token_util import create_access_token, create_refresh_token, decode_refresh_token, hash_token
 from src.core.security.access_token_bearer import AccessTokenBearer
 from datetime import datetime
-from src.otp.otp_utils import create_otp_schema
+from src.features.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.util.email_util import validate_email
@@ -81,8 +81,7 @@ async def create_user_account(
             raise AuthError.email_already_registered()
 
         new_user = await user_repository.create_user(user_data=user_data, db=db)
-        print("New user")
-        print(new_user.id)
+
         otp_schema = create_otp_schema(email=user_data.email, user_id=new_user.id, purpose="account_verification")
         await otp_service.save_generated_otp(otp_schema=otp_schema, db=db)
 

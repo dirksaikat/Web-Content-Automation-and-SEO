@@ -1,14 +1,14 @@
 from sqlalchemy import delete
 from sqlmodel import select
 
-from .models import OtpVerification
+from src.features.otp.models import OtpVerification
 from sqlmodel.ext.asyncio.session import AsyncSession
-from .schemas import CreateOtpSchema
+from src.features.otp.request_schemas import CreateOtpRequestSchema
 
 
 class OtpService:
 
-    async def save_generated_otp(self, otp_schema: CreateOtpSchema, db: AsyncSession):
+    async def save_generated_otp(self, otp_schema: CreateOtpRequestSchema, db: AsyncSession):
         await db.exec(
             delete(OtpVerification).where(
                 OtpVerification.user_id == otp_schema.user_id,
