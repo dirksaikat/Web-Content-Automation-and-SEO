@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from src.features.auth.user_repository import UserRepository
 from src.features.auth.token_repository import TokenRepository
-from src.features.otp.otp_repository import OtpService
+from src.features.otp.otp_repository import OtpRepository
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.security.token_util import create_access_token, create_refresh_token, decode_refresh_token, hash_token
@@ -14,7 +14,7 @@ from src.util.email_util import validate_email
 from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
-from src.features.auth.services_di import get_user_repository, get_token_repository
+from src.features.auth.repositories_di import get_user_repository, get_token_repository
 import time
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
@@ -38,7 +38,7 @@ from src.infra.token_cache import TokenCache, get_token_cache
 
 
 auth_router = APIRouter()
-otp_service = OtpService()
+otp_service = OtpRepository()
 REFRESH_TOKEN_EXPIRY = 2
 
 auth_rate_limiter = get_rate_limiter(

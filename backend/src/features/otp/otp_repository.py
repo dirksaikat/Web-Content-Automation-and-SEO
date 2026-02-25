@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.features.otp.request_schemas import CreateOtpRequestSchema
 
 
-class OtpService:
+class OtpRepository:
 
     async def save_generated_otp(self, otp_schema: CreateOtpRequestSchema, db: AsyncSession):
         await db.exec(

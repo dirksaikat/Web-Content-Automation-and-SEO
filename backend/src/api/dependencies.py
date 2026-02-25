@@ -3,7 +3,7 @@ from fastapi import Request, Depends
 from src.core.database.main import get_session
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.features.auth.user_repository import UserRepository
-from src.features.auth.services_di import get_user_repository
+from src.features.auth.repositories_di import get_user_repository
 
 from src.core.security.access_token_bearer import AccessTokenBearer
 
