@@ -1,0 +1,3 @@
+
+OTP_PURPOSE_ACCOUNT_VERIFICATION: str = "account_verification"
+OTP_EXPIRY_IN_MINUTES: int = 5

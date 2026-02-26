@@ -15,3 +15,10 @@ class CreateOtpRequestSchema(BaseModel):
 class VerifyAccountRequestSchema(BaseModel):
     email: str
     otp: str
+
+
+class ResendAccountVerificationOptRequestSchema(BaseModel):
+    email: str
+
+
+

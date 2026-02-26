@@ -1,22 +1,17 @@
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field
 import sqlalchemy.dialects.postgresql as pg
 import uuid
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import Relationship
-from sqlalchemy.sql import text
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
-    CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
-    Index,
     Integer,
     String,
-    Text,
-    UniqueConstraint,
 )
 
 

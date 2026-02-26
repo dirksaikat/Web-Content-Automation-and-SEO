@@ -1,7 +1,14 @@
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field
 import sqlalchemy.dialects.postgresql as pg
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
+
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime
+)
+from sqlalchemy.sql import func
 
 
 class OtpVerification(SQLModel, table=True):
@@ -14,12 +21,20 @@ class OtpVerification(SQLModel, table=True):
             default=uuid.uuid4
         )
     )
-    email: str
-    user_id: uuid.UUID = Field(default=None, foreign_key="users.id", nullable=False)
-    token_digest: str = Field(max_length=128, unique=True, index=True, nullable=False)
-    purpose: str = Field(default="verify", max_length=32, nullable=False)
-    expires_at: datetime = Field(nullable=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
+    email: str = Field(sa_column=Column(String(255), nullable=False))
+    user_id: uuid.UUID = Field(sa_column=Column(default=None, foreign_key="users.id", nullable=False))
+    token_digest: str = Field(sa_column=Column(max_length=128, unique=True, index=True, nullable=False))
+    purpose: str = Field(sa_column=Column(default="verify", max_length=32, nullable=False))
+    #expires_at: datetime = Field(sa_column=Column(nullable=False))
+    #created_at: datetime = Field(sa_column=Column(default=datetime.now(UTC), nullable=False))
+
+    expires_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+
+    created_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    )
 
     def is_expired(self) -> bool:
-        return self.expires_at < datetime.utcnow()
+        return self.expires_at < datetime.now(UTC)

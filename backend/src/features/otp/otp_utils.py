@@ -1,6 +1,8 @@
 import hashlib
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
+
+from src.core.utils.constants import OTP_EXPIRY_IN_MINUTES
 from src.features.otp.request_schemas import CreateOtpRequestSchema
 import uuid
 
@@ -9,7 +11,12 @@ def hash_otp(code: str) -> str:
     return hashlib.sha256(code.encode()).hexdigest()
 
 
-def create_otp_schema(email: str, user_id: uuid.UUID, purpose: str, ttl_minutes=10) -> CreateOtpRequestSchema:
+def create_otp_schema(
+        email: str,
+        user_id: uuid.UUID,
+        purpose: str,
+        ttl_minutes=OTP_EXPIRY_IN_MINUTES
+) -> CreateOtpRequestSchema:
     code = f"{random.randint(100000, 999999)}"
     digest = hash_otp(code)
     return CreateOtpRequestSchema(
@@ -18,7 +25,7 @@ def create_otp_schema(email: str, user_id: uuid.UUID, purpose: str, ttl_minutes=
         code=code,
         purpose=purpose,
         token_digest=digest,
-        expires_at=datetime.utcnow() + timedelta(minutes=ttl_minutes)
+        expires_at=datetime.now(UTC) + timedelta(minutes=ttl_minutes)
     )
 
 

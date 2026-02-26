@@ -35,6 +35,7 @@ from src.features.auth.response_schema import (
 )
 from src.core.security.password_util import verify_password
 from src.infra.token_cache import TokenCache, get_token_cache
+from src.core.utils.constants import OTP_PURPOSE_ACCOUNT_VERIFICATION
 
 
 auth_router = APIRouter()
@@ -82,7 +83,9 @@ async def create_user_account(
 
         new_user = await user_repository.create_user(user_data=user_data, db=db)
 
-        otp_schema = create_otp_schema(email=user_data.email, user_id=new_user.id, purpose="account_verification")
+        otp_schema = create_otp_schema(
+            email=user_data.email, user_id=new_user.id, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION
+        )
         await otp_service.save_generated_otp(otp_schema=otp_schema, db=db)
 
         await db.commit()
