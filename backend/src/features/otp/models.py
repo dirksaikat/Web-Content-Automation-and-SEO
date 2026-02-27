@@ -6,7 +6,8 @@ from datetime import datetime, UTC
 from sqlalchemy import (
     Column,
     String,
-    DateTime
+    DateTime,
+    ForeignKey
 )
 from sqlalchemy.sql import func
 
@@ -22,12 +23,13 @@ class OtpVerification(SQLModel, table=True):
         )
     )
     email: str = Field(sa_column=Column(String(255), nullable=False))
-    user_id: uuid.UUID = Field(sa_column=Column(default=None, foreign_key="users.id", nullable=False))
-    token_digest: str = Field(sa_column=Column(max_length=128, unique=True, index=True, nullable=False))
-    purpose: str = Field(sa_column=Column(default="verify", max_length=32, nullable=False))
-    #expires_at: datetime = Field(sa_column=Column(nullable=False))
-    #created_at: datetime = Field(sa_column=Column(default=datetime.now(UTC), nullable=False))
+    user_id: uuid.UUID = Field(sa_column=Column(ForeignKey("users.id", ondelete="CASCADE"), default=None, nullable=False))
+    token_digest: str = Field(sa_column=Column(String(128), unique=True, index=True, nullable=False))
+    purpose: str = Field(sa_column=Column(String(50), default="verify", nullable=False))
 
+    resend_available_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     expires_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
     )
@@ -37,4 +39,4 @@ class OtpVerification(SQLModel, table=True):
     )
 
     def is_expired(self) -> bool:
-        return self.expires_at < datetime.now(UTC)
+        return self.expires_at <= datetime.now(UTC)

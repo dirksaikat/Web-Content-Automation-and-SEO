@@ -71,3 +71,14 @@ class OtpRepository:
         await db.exec(statement=statement)
         await db.flush()
         return True
+
+    async def delete_expired_otp(self, email: str, purpose: str, db: AsyncSession) -> bool:
+        statement = (
+            delete(OtpVerification).where(
+                OtpVerification.email == email,
+                OtpVerification.purpose == purpose
+            )
+        )
+        await db.exec(statement=statement)
+        await db.flush()
+        return True

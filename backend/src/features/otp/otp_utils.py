@@ -2,7 +2,7 @@ import hashlib
 import random
 from datetime import datetime, timedelta, UTC
 
-from src.core.utils.constants import OTP_EXPIRY_IN_MINUTES
+from src.core.utils.constants import OTP_EXPIRY_IN_MINUTES, OTP_COOL_DOWN_IN_MINUTES
 from src.features.otp.request_schemas import CreateOtpRequestSchema
 import uuid
 
@@ -25,6 +25,7 @@ def create_otp_schema(
         code=code,
         purpose=purpose,
         token_digest=digest,
+        resend_available_at=datetime.now(UTC) + timedelta(minutes=OTP_COOL_DOWN_IN_MINUTES),
         expires_at=datetime.now(UTC) + timedelta(minutes=ttl_minutes)
     )
 

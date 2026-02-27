@@ -15,6 +15,7 @@ from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
 from redis.asyncio import Redis
 from src.features.auth.repositories_di import get_user_repository, get_token_repository
+from src.features.otp.repositories_di import get_otp_repository
 import time
 from src.infra.redis_client import get_redis
 from src.features.auth.auth_error import AuthError
@@ -39,7 +40,6 @@ from src.core.utils.constants import OTP_PURPOSE_ACCOUNT_VERIFICATION
 
 
 auth_router = APIRouter()
-otp_service = OtpRepository()
 REFRESH_TOKEN_EXPIRY = 2
 
 auth_rate_limiter = get_rate_limiter(
@@ -54,6 +54,7 @@ auth_rate_limiter = get_rate_limiter(
 async def create_user_account(
         user_data: CreateUserRequestSchema,
         user_repository: UserRepository = Depends(get_user_repository),
+        otp_repository: OtpRepository = Depends(get_otp_repository),
         db: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
         _: None = Depends(auth_rate_limiter),
@@ -86,7 +87,7 @@ async def create_user_account(
         otp_schema = create_otp_schema(
             email=user_data.email, user_id=new_user.id, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION
         )
-        await otp_service.save_generated_otp(otp_schema=otp_schema, db=db)
+        await otp_repository.save_generated_otp(otp_schema=otp_schema, db=db)
 
         await db.commit()
 

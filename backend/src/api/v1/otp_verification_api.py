@@ -12,6 +12,7 @@ from src.features.otp.response_schemas import (
 from src.features.auth.user_repository import UserRepository
 from src.features.otp.otp_repository import OtpRepository
 from src.features.otp.repositories_di import get_otp_repository
+from src.features.otp.otp_utils import create_otp_schema
 from src.features.otp.otp_utils import verify_code_matches
 from src.util.email_util import validate_email
 from src.features.auth.auth_error import AuthError
@@ -19,6 +20,9 @@ from src.features.otp.otp_utils import hash_otp
 from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
 from src.features.auth.repositories_di import get_user_repository
 from src.core.utils.constants import OTP_PURPOSE_ACCOUNT_VERIFICATION
+from datetime import datetime, UTC
+from src.core.utils.constants import OTP_EXPIRY_IN_MINUTES
+from src.mail.mail import send_mail_message
 
 otp_route = APIRouter()
 
@@ -73,7 +77,7 @@ async def verify_account(
     )
 
 
-@otp_route.post("resend-account-verification")
+@otp_route.post("/resend-account-verification")
 async def resend_account_verification_otp(
     data: ResendAccountVerificationOptRequestSchema,
     db: AsyncSession = Depends(get_session),
@@ -104,5 +108,39 @@ async def resend_account_verification_otp(
         email=data.email, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db
     )
 
+    if active_otp:
+        utc_now = datetime.now(UTC)
+        if utc_now < active_otp.resend_available_at:
+            wait_delta = active_otp.resend_available_at - utc_now
+            wait_seconds = int(wait_delta.total_seconds())
+            wait_minutes = wait_seconds // 60
+            wait_secs = wait_seconds % 60
 
-    pass
+            return ResendOTPResponse(
+                message=f"Please check your email for the verification code. You can request a new code in {wait_minutes}m {wait_secs}s.",
+                active_otp=True,
+                cooldown_remaining_seconds=wait_seconds,
+            )
+
+        await otp_repository.delete_expired_otp(email=data.email, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db)
+
+    otp_schema = create_otp_schema(
+        email=data.email, user_id=user.id, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION
+    )
+    await otp_repository.save_generated_otp(otp_schema=otp_schema, db=db)
+
+    await db.commit()
+
+    html = f"<h1>Your otp is {otp_schema.code} </h1>"
+
+    await send_mail_message(
+        recipients=[data.email],
+        subject="OTP Verification",
+        body=html
+    )
+
+    return ResendOTPResponse(
+        message="Verification code sent to your email.",
+        active_otp=True,
+        cooldown_remaining_seconds=OTP_EXPIRY_IN_MINUTES*60,
+    )

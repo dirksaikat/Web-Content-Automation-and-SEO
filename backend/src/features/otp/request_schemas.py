@@ -9,6 +9,7 @@ class CreateOtpRequestSchema(BaseModel):
     code: str
     token_digest: str
     purpose: str
+    resend_available_at: datetime
     expires_at: datetime
 
 
