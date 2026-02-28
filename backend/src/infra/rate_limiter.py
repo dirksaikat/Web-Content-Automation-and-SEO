@@ -1,64 +1,58 @@
+from .rate_limit_config import RateLimitConfig, RATE_LIMITS, RateLimitKey
 import time
 from fastapi import Request
-
-from enum import Enum
-from src.infra.redis_client import get_redis
-from src.features.auth.auth_error import AuthError
-
-
-class RateLimitKey(Enum):
-    IP = "ip"
-    IP_ENDPOINT = "ip_endpoint"
-    IP_USERNAME = "ip_username"
-    GLOBAL = "global"
+from .redis_client import get_redis
 
 
 class RateLimiter:
-    def __init__(
-            self,
-            *,
-            limit: int,
-            window_seconds: int,
-            key_type: RateLimitKey,
-            block_seconds: int,
-            prefix: str = "rate_limit",
-    ):
-        self.limit = limit
-        self.window = window_seconds
-        self.key_type = key_type
+    def __init__(self, redis, config: dict[str, RateLimitConfig], prefix="rate_limit"):
+        self.redis = redis
+        self.config = config
         self.prefix = prefix
-        self.block_seconds = block_seconds
 
-    async def __call__(self, request: Request):
-        redis = await get_redis()
-        identifier = await self._build_key(request)
+    async def is_rate_limited(
+            self,
+            scope: str,
+            request: Request,
+            identifier: str | None = None
+    ) -> bool:
+        if scope not in self.config:
+            raise RuntimeError(f"Rate limit scope '{scope}' not configured")
 
-        rate_key = f"{self.prefix}:{identifier}"
-        block_key = f"{self.prefix}:block:{identifier}"
+        cfg = self.config[scope]
 
-        # 1️⃣ Check if blocked
-        if await redis.exists(block_key):
-            raise AuthError.rate_limited()
+        if identifier is None:
+            identifier = await self._build_key(request, cfg.key_type)
 
-        # 2️⃣ Sliding window logic
+        rate_key = f"{self.prefix}:{scope}:{identifier}"
+        block_key = f"{self.prefix}:{scope}:block:{identifier}"
+
+        if await self.redis.exists(block_key):
+            return True
+
         now = int(time.time())
 
-        pipe = redis.pipeline()
+        pipe = self.redis.pipeline()
         await pipe.zadd(rate_key, {now: now})
-        await pipe.zremrangebyscore(rate_key, 0, now - self.window)
+        await pipe.zremrangebyscore(rate_key, 0, now - cfg.window_seconds)
         await pipe.zcard(rate_key)
-        await pipe.expire(rate_key, self.window)
+        await pipe.expire(rate_key, cfg.window_seconds)
 
         _, _, count, _ = await pipe.execute()
 
-        if count > self.limit:
-            if self.block_seconds:
-                await redis.set(block_key, "1", ex=self.block_seconds)
+        if count > cfg.limit:
+            if cfg.block_seconds:
+                await self.redis.set(block_key, "1", ex=cfg.block_seconds)
+            return True
 
-            raise AuthError.rate_limited()
+        return False
 
-    async def _build_key(self, request: Request) -> str:
-        match self.key_type:
+    # ---------------------------------
+    # 🔑 Key builder
+    # ---------------------------------
+
+    async def _build_key(self, request: Request, key_type: RateLimitKey) -> str:
+        match key_type:
             case RateLimitKey.IP:
                 return self._ip_key(request)
 
@@ -86,22 +80,22 @@ class RateLimiter:
 
     async def _ip_username_key(self, request: Request) -> str:
         body = await request.json()
-        username = body.get("username", "anonymous")
+        username = body.get("username", "email")
         ip = self._ip_key(request)
         return f"{ip}:{username}"
 
 
-def get_rate_limiter(
-        limit: int,
-        window_seconds: int,
-        key_type: RateLimitKey,
-        block_seconds=3600,
-        prefix: str = "rate_limit",
-) -> RateLimiter:
-    return RateLimiter(
-        limit=limit,
-        window_seconds=window_seconds,
-        key_type=key_type,
-        block_seconds=block_seconds,
-        prefix=prefix
-    )
+_rate_limiter: RateLimiter | None = None
+
+
+async def get_rate_limiter() -> RateLimiter:
+    global _rate_limiter
+
+    if _rate_limiter is None:
+        redis = await get_redis()
+        _rate_limiter = RateLimiter(
+            redis=redis,
+            config=RATE_LIMITS,
+        )
+
+    return _rate_limiter

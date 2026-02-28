@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.database.main import get_session
 from src.features.otp.request_schemas import (
@@ -17,31 +17,36 @@ from src.features.otp.otp_utils import verify_code_matches
 from src.util.email_util import validate_email
 from src.features.auth.auth_error import AuthError
 from src.features.otp.otp_utils import hash_otp
-from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
+from src.infra.rate_limiter import get_rate_limiter, RateLimiter
 from src.features.auth.repositories_di import get_user_repository
 from src.core.utils.constants import OTP_PURPOSE_ACCOUNT_VERIFICATION
 from datetime import datetime, UTC
 from src.core.utils.constants import OTP_EXPIRY_IN_MINUTES
 from src.mail.mail import send_mail_message
+from src.core.utils.constants import (
+    RATE_LIMIT_SCOPE_KEY_OTP_ACCOUNT_VERIFICATION,
+    RATE_LIMIT_SCOPE_KEY_RESEND_OTP
+)
 
 otp_route = APIRouter()
-
-register_rate_limiter = get_rate_limiter(
-    limit=3,
-    window_seconds=60,
-    key_type=RateLimitKey.IP,
-    block_seconds=3600
-)
 
 
 @otp_route.post("/verify-account")
 async def verify_account(
+        request: Request,
         data: VerifyAccountRequestSchema,
         db: AsyncSession = Depends(get_session),
         user_repository: UserRepository = Depends(get_user_repository),
         otp_repository: OtpRepository = Depends(get_otp_repository),
-        _: None = Depends(register_rate_limiter),
+        rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> EmailVerificationResponseSchema:
+
+    is_rate_limited = await rate_limiter.is_rate_limited(
+        scope=RATE_LIMIT_SCOPE_KEY_OTP_ACCOUNT_VERIFICATION, request=request
+    )
+    if is_rate_limited:
+        raise AuthError.rate_limited()
+
     email = data.email
     email_validation = await validate_email(email)
     if not email_validation["valid"]:
@@ -79,12 +84,19 @@ async def verify_account(
 
 @otp_route.post("/resend-account-verification")
 async def resend_account_verification_otp(
+    request: Request,
     data: ResendAccountVerificationOptRequestSchema,
     db: AsyncSession = Depends(get_session),
     user_repository: UserRepository = Depends(get_user_repository),
     otp_repository: OtpRepository = Depends(get_otp_repository),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ResendOTPResponse:
-    #todo check rate limit first
+
+    is_rate_limited = await rate_limiter.is_rate_limited(
+        scope=RATE_LIMIT_SCOPE_KEY_RESEND_OTP, request=request
+    )
+    if is_rate_limited:
+        raise AuthError.rate_limited()
 
     email_validation = await validate_email(data.email)
     if not email_validation["valid"]:

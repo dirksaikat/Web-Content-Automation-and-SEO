@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
 from src.features.auth.user_repository import UserRepository
 from src.features.auth.token_repository import TokenRepository
 from src.features.otp.otp_repository import OtpRepository
@@ -9,7 +9,7 @@ from src.core.security.access_token_bearer import AccessTokenBearer
 from datetime import datetime
 from src.features.otp.otp_utils import create_otp_schema
 from src.mail.mail import send_mail_message
-from src.infra.rate_limiter import RateLimitKey, get_rate_limiter
+from src.infra.rate_limiter import get_rate_limiter, RateLimiter
 from src.util.email_util import validate_email
 from src.core.security.password_util import validate_password_strength
 from src.util.date_util import utc_now
@@ -34,31 +34,32 @@ from src.features.auth.response_schema import (
     RefreshTokenResponse,
     LogoutResponse
 )
+from src.core.utils.constants import RATE_LIMIT_SCOPE_KEY_REGISTRATION, RATE_LIMIT_SCOPE_KEY_LOGIN
+
+
 from src.core.security.password_util import verify_password
 from src.infra.token_cache import TokenCache, get_token_cache
 from src.core.utils.constants import OTP_PURPOSE_ACCOUNT_VERIFICATION
 
 
 auth_router = APIRouter()
-REFRESH_TOKEN_EXPIRY = 2
-
-auth_rate_limiter = get_rate_limiter(
-    limit=3,
-    window_seconds=60,
-    key_type=RateLimitKey.IP,
-    block_seconds=3600
-)
 
 
 @auth_router.post("/signup", status_code=status.HTTP_201_CREATED)
 async def create_user_account(
+        request: Request,
         user_data: CreateUserRequestSchema,
         user_repository: UserRepository = Depends(get_user_repository),
         otp_repository: OtpRepository = Depends(get_otp_repository),
         db: AsyncSession = Depends(get_session),
         redis: Redis = Depends(get_redis),
-        _: None = Depends(auth_rate_limiter),
+        rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> CreateUserResponseSchema:
+
+    is_rate_limited = await rate_limiter.is_rate_limited(scope=RATE_LIMIT_SCOPE_KEY_REGISTRATION, request=request)
+    if is_rate_limited:
+        raise AuthError.rate_limited()
+
     email_validation = await validate_email(user_data.email)
     if not email_validation["valid"]:
         raise AuthError.invalid_email(errors=email_validation["errors"])
@@ -113,13 +114,21 @@ async def create_user_account(
 
 @auth_router.post("/login")
 async def login_user(
+        request: Request,
         login_data: LoginRequestSchema,
         db: AsyncSession = Depends(get_session),
         token_cache: TokenCache = Depends(get_token_cache),
         user_repository: UserRepository = Depends(get_user_repository),
         token_repository: TokenRepository = Depends(get_token_repository),
-        _: None = Depends(auth_rate_limiter),
+        rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> LoginResponse:
+
+    is_rate_limited = await rate_limiter.is_rate_limited(scope=RATE_LIMIT_SCOPE_KEY_LOGIN, request=request)
+    print("####")
+    print(is_rate_limited)
+    if is_rate_limited:
+        raise AuthError.rate_limited()
+
     email = login_data.email
     password = login_data.password
 
