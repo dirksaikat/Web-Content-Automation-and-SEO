@@ -73,7 +73,7 @@ async def verify_account(
     await user_repository.update_user(user=user, is_verified=True, db=db)
 
     await otp_repository.delete_otp(
-        email=data.email, code=hash_otp(data.otp), purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION,db=db
+        email=data.email, code=hash_otp(data.otp), purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db
     )
     await db.commit()
     return EmailVerificationResponseSchema(

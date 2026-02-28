@@ -124,8 +124,6 @@ async def login_user(
 ) -> LoginResponse:
 
     is_rate_limited = await rate_limiter.is_rate_limited(scope=RATE_LIMIT_SCOPE_KEY_LOGIN, request=request)
-    print("####")
-    print(is_rate_limited)
     if is_rate_limited:
         raise AuthError.rate_limited()
 
