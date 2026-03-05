@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 import uuid
 from datetime import datetime
 
@@ -36,5 +36,15 @@ class LogoutRequest(BaseModel):
     refresh_token: str
     logout_all_devices: bool = False
 
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str
+    code: str
+    password: str
+    confirm_password: str
 
 

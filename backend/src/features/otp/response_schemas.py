@@ -10,10 +10,11 @@ class EmailVerificationResponseSchema(BaseModel):
     }
 
 
-class ResendOTPResponse(BaseModel):
+class OTPResponse(BaseModel):
     message: str = Field(..., description="Human-readable message")
     active_otp: bool | None = Field(default=None, description="Whether an active OTP exists")
     cooldown_remaining_seconds: int | None = Field(default=None, description="Seconds until resend is allowed")
+    expires_in_seconds: int | None = Field(default=None, description="OTP expiry in seconds")
 
     model_config = {
         "json_schema_extra": {

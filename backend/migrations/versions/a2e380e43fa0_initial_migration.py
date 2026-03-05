@@ -1,8 +1,8 @@
 """initial migration
 
-Revision ID: 821f91f6cef7
+Revision ID: a2e380e43fa0
 Revises: 
-Create Date: 2026-02-27 03:18:27.287656
+Create Date: 2026-03-05 01:10:14.555833
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 import sqlmodel
 
 # revision identifiers, used by Alembic.
-revision: str = '821f91f6cef7'
+revision: str = 'a2e380e43fa0'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -44,6 +44,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('token_digest', sa.String(length=128), nullable=False),
     sa.Column('purpose', sa.String(length=50), nullable=False),
+    sa.Column('resend_available_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),

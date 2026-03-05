@@ -1,5 +1,6 @@
 
 OTP_PURPOSE_ACCOUNT_VERIFICATION: str = "account_verification"
+OTP_PURPOSE_FORGOT_PASSWORD: str = "forgot_password"
 OTP_EXPIRY_IN_MINUTES: int = 5
 OTP_COOL_DOWN_IN_MINUTES: int = 2
 

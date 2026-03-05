@@ -7,7 +7,7 @@ from src.features.otp.request_schemas import (
 )
 from src.features.otp.response_schemas import (
     EmailVerificationResponseSchema,
-    ResendOTPResponse
+    OTPResponse
 )
 from src.features.auth.user_repository import UserRepository
 from src.features.otp.otp_repository import OtpRepository
@@ -55,11 +55,10 @@ async def verify_account(
     otp_entry = await otp_repository.get_otp_by_email_and_purpose(
         email=data.email, code=hash_otp(data.otp), purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db)
 
-    if (
-            not otp_entry
-            or otp_entry.is_expired()
-            or not verify_code_matches(code=data.otp, stored_digest=otp_entry.token_digest)
-    ):
+    if not otp_entry or not verify_code_matches(code=data.otp, stored_digest=otp_entry.token_digest):
+        raise AuthError.invalid_otp()
+
+    if otp_entry.is_expired():
         await otp_repository.delete_otp(
             email=data.email, code=data.otp, purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db
         )
@@ -70,7 +69,7 @@ async def verify_account(
     if not user:
         raise AuthError.user_not_found()
 
-    await user_repository.update_user(user=user, is_verified=True, db=db)
+    await user_repository.update_user(user=user, db=db, is_verified=True)
 
     await otp_repository.delete_otp(
         email=data.email, code=hash_otp(data.otp), purpose=OTP_PURPOSE_ACCOUNT_VERIFICATION, db=db
@@ -90,7 +89,7 @@ async def resend_account_verification_otp(
     user_repository: UserRepository = Depends(get_user_repository),
     otp_repository: OtpRepository = Depends(get_otp_repository),
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
-) -> ResendOTPResponse:
+) -> OTPResponse:
 
     is_rate_limited = await rate_limiter.is_rate_limited(
         scope=RATE_LIMIT_SCOPE_KEY_RESEND_OTP, request=request
@@ -107,7 +106,7 @@ async def resend_account_verification_otp(
         raise AuthError.user_not_found()
 
     if user.is_verified:
-        return ResendOTPResponse(
+        return OTPResponse(
             message="This email is already verified. You can log in.",
             active_otp=False,
             expires_in_seconds=0,
@@ -128,8 +127,9 @@ async def resend_account_verification_otp(
             wait_minutes = wait_seconds // 60
             wait_secs = wait_seconds % 60
 
-            return ResendOTPResponse(
-                message=f"Please check your email for the verification code. You can request a new code in {wait_minutes}m {wait_secs}s.",
+            return OTPResponse(
+                message=f"Please check your email for the verification code. "
+                        f"You can request a new code in {wait_minutes}m {wait_secs}s.",
                 active_otp=True,
                 cooldown_remaining_seconds=wait_seconds,
             )
@@ -151,7 +151,7 @@ async def resend_account_verification_otp(
         body=html
     )
 
-    return ResendOTPResponse(
+    return OTPResponse(
         message="Verification code sent to your email.",
         active_otp=True,
         cooldown_remaining_seconds=OTP_EXPIRY_IN_MINUTES*60,

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from src.api.v1.auth_api import auth_router
 from src.api.v1.otp_verification_api import otp_route
+from src.api.v1.passwords_api import password_router
 from contextlib import asynccontextmanager
 from src.core.database.main import init_db
 from src.errors.register_all_errors import register_all_errors
@@ -30,3 +31,4 @@ register_middleware(app)
 
 app.include_router(auth_router, prefix=f"/api/{version}/auth", tags=['api'])
 app.include_router(otp_route, prefix=f"/api/{version}/otp", tags=['api'])
+app.include_router(password_router, prefix=f"/api/{version}")

@@ -67,3 +67,18 @@ class LogoutResponse(BaseModel):
             ]
         }
     }
+
+
+class ResetPasswordResponse(BaseModel):
+
+    message: str = Field(..., description="Success message")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "message": "Password reset successfully. Please log in with your new password.",
+                }
+            ]
+        }
+    }

@@ -52,9 +52,9 @@ RATE_LIMITS: dict[str, RateLimitConfig] = {
     ),
 
     RATE_LIMIT_SCOPE_KEY_OTP_FORGOT_PASSWORD: RateLimitConfig(
-        limit=3,
-        window_seconds=300,
-        block_seconds=600,
+        limit=5,
+        window_seconds=3600,
+        block_seconds=3600,
         key_type=RateLimitKey.IP_USERNAME,
     ),
 }
